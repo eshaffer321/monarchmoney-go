@@ -73,6 +73,13 @@ type Institution struct {
 	Status             string `json:"status"`
 	PrimaryColor       string `json:"primaryColor"`
 	URL                string `json:"url"`
+	LogoURL            string `json:"logoUrl"`
+	// Credential fields
+	CredentialID   string     `json:"credentialId"`
+	UpdateRequired bool       `json:"updateRequired"`
+	DisconnectedAt *time.Time `json:"disconnectedAt"`
+	LastUpdatedAt  *time.Time `json:"lastUpdatedAt"`
+	DataProvider   string     `json:"dataProvider"`
 }
 
 // Merchant represents a merchant
@@ -84,7 +91,7 @@ type Merchant struct {
 // Transaction represents a financial transaction
 type Transaction struct {
 	ID                 string               `json:"id"`
-	Date               time.Time            `json:"date"`
+	Date               Date                 `json:"date"`
 	Amount             float64              `json:"amount"`
 	Pending            bool                 `json:"pending"`
 	HideFromReports    bool                 `json:"hideFromReports"`
@@ -95,10 +102,10 @@ type Transaction struct {
 	IsSplitTransaction bool                 `json:"isSplitTransaction"`
 	IsRecurring        bool                 `json:"isRecurring"`
 	NeedsReview        bool                 `json:"needsReview"`
-	ReviewedAt         *time.Time           `json:"reviewedAt,omitempty"`
+	ReviewedAt         *Date                `json:"reviewedAt,omitempty"`
 	ReviewedByUserID   string               `json:"reviewedByUserId"`
-	CreatedAt          time.Time            `json:"createdAt"`
-	UpdatedAt          time.Time            `json:"updatedAt"`
+	CreatedAt          Date                 `json:"createdAt"`
+	UpdatedAt          Date                 `json:"updatedAt"`
 	Account            *Account             `json:"account"`
 	Category           *TransactionCategory `json:"category"`
 	Tags               []*Tag               `json:"tags"`
@@ -167,36 +174,42 @@ type Budget struct {
 	PercentageComplete float64              `json:"percentageComplete"`
 }
 
-// Cashflow represents cashflow data
+// Cashflow represents comprehensive cashflow data
 type Cashflow struct {
-	StartDate   time.Time           `json:"startDate"`
-	EndDate     time.Time           `json:"endDate"`
-	Income      float64             `json:"income"`
-	Expenses    float64             `json:"expenses"`
-	NetCashflow float64             `json:"netCashflow"`
-	ByCategory  []*CashflowCategory `json:"byCategory"`
+	StartDate       time.Time                `json:"startDate"`
+	EndDate         time.Time                `json:"endDate"`
+	Summary         *CashflowSummary         `json:"summary"`
+	ByCategory      []*CashflowCategory      `json:"byCategory"`
+	ByCategoryGroup []*CashflowCategoryGroup `json:"byCategoryGroup"`
+	ByMerchant      []*CashflowMerchant      `json:"byMerchant"`
 }
 
 // CashflowCategory represents cashflow by category
 type CashflowCategory struct {
 	Category *TransactionCategory `json:"category"`
 	Amount   float64              `json:"amount"`
-	Count    int                  `json:"count"`
+}
+
+// CashflowCategoryGroup represents cashflow by category group
+type CashflowCategoryGroup struct {
+	CategoryGroup *CategoryGroup `json:"categoryGroup"`
+	Amount        float64        `json:"amount"`
+}
+
+// CashflowMerchant represents cashflow by merchant
+type CashflowMerchant struct {
+	Merchant *Merchant `json:"merchant"`
+	Amount   float64   `json:"amount"`
 }
 
 // CashflowSummary represents cashflow summary
 type CashflowSummary struct {
-	Interval  string              `json:"interval"`
-	Summaries []*CashflowInterval `json:"summaries"`
-}
-
-// CashflowInterval represents cashflow for an interval
-type CashflowInterval struct {
-	StartDate   time.Time `json:"startDate"`
-	EndDate     time.Time `json:"endDate"`
+	StartDate   time.Time `json:"startDate,omitempty"`
+	EndDate     time.Time `json:"endDate,omitempty"`
 	Income      float64   `json:"income"`
-	Expenses    float64   `json:"expenses"`
-	NetCashflow float64   `json:"netCashflow"`
+	Expense     float64   `json:"expense"`
+	Savings     float64   `json:"savings"`
+	SavingsRate float64   `json:"savingsRate"`
 }
 
 // Holding represents an investment holding
@@ -214,9 +227,9 @@ type Holding struct {
 
 // AccountBalance represents account balance at a point in time
 type AccountBalance struct {
-	AccountID string    `json:"accountId"`
-	Date      time.Time `json:"date"`
-	Balance   float64   `json:"balance"`
+	AccountID string  `json:"accountId"`
+	Date      Date    `json:"date"`
+	Balance   float64 `json:"balance"`
 }
 
 // AccountSnapshot represents account snapshot
@@ -237,22 +250,23 @@ type AccountHistory struct {
 
 // BalanceEntry represents a balance at a point in time
 type BalanceEntry struct {
-	Date    time.Time `json:"date"`
-	Balance float64   `json:"balance"`
-	Synced  bool      `json:"synced"`
+	Date    Date    `json:"date"`
+	Balance float64 `json:"balance"`
+	Synced  bool    `json:"synced"`
 }
 
 // RecurringTransaction represents a recurring transaction
 type RecurringTransaction struct {
-	ID        string               `json:"id"`
-	Merchant  *Merchant            `json:"merchant"`
-	Amount    float64              `json:"amount"`
-	Frequency string               `json:"frequency"`
-	NextDate  time.Time            `json:"nextDate"`
-	LastDate  time.Time            `json:"lastDate"`
-	Category  *TransactionCategory `json:"category"`
-	Account   *Account             `json:"account"`
-	IsActive  bool                 `json:"isActive"`
+	ID            string               `json:"id"`
+	Merchant      *Merchant            `json:"merchant"`
+	Amount        float64              `json:"amount"`
+	Frequency     string               `json:"frequency"`
+	NextDate      Date                 `json:"nextDate"`
+	LastDate      Date                 `json:"lastDate"`
+	Category      *TransactionCategory `json:"category"`
+	Account       *Account             `json:"account"`
+	IsActive      bool                 `json:"isActive"`
+	IsApproximate bool                 `json:"isApproximate"`
 }
 
 // Subscription represents subscription details
@@ -316,7 +330,7 @@ type UpdateAccountParams struct {
 
 // CreateTransactionParams for creating transactions
 type CreateTransactionParams struct {
-	Date       time.Time `json:"date"`
+	Date       Date      `json:"date"`
 	AccountID  string    `json:"accountId"`
 	Amount     float64   `json:"amount"`
 	Merchant   *Merchant `json:"merchant"`
@@ -326,14 +340,14 @@ type CreateTransactionParams struct {
 
 // UpdateTransactionParams for updating transactions
 type UpdateTransactionParams struct {
-	Date            *time.Time `json:"date,omitempty"`
-	AccountID       *string    `json:"accountId,omitempty"`
-	Amount          *float64   `json:"amount,omitempty"`
-	Merchant        *string    `json:"merchant,omitempty"`
-	CategoryID      *string    `json:"categoryId,omitempty"`
-	Notes           *string    `json:"notes,omitempty"`
-	HideFromReports *bool      `json:"hideFromReports,omitempty"`
-	NeedsReview     *bool      `json:"needsReview,omitempty"`
+	Date            *Date    `json:"date,omitempty"`
+	AccountID       *string  `json:"accountId,omitempty"`
+	Amount          *float64 `json:"amount,omitempty"`
+	Merchant        *string  `json:"merchant,omitempty"`
+	CategoryID      *string  `json:"categoryId,omitempty"`
+	Notes           *string  `json:"notes,omitempty"`
+	HideFromReports *bool    `json:"hideFromReports,omitempty"`
+	NeedsReview     *bool    `json:"needsReview,omitempty"`
 }
 
 // CreateCategoryParams for creating categories

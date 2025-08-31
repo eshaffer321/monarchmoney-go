@@ -1,10 +1,12 @@
 query GetInstitutions {
-  institutions {
+  credentials {
     id
-    plaidInstitutionId
-    name
-    status
-    primaryColor
-    url
+    updateRequired
+    dataProvider
+    institution {
+      id
+      name
+      url
+    }
   }
 }

@@ -336,7 +336,7 @@ func TestTransactionService_Create(t *testing.T) {
 	// Execute
 	ctx := context.Background()
 	params := &CreateTransactionParams{
-		Date:       time.Date(2024, 1, 20, 0, 0, 0, 0, time.UTC),
+		Date:       Date{Time: time.Date(2024, 1, 20, 0, 0, 0, 0, time.UTC)},
 		AccountID:  "acc-123",
 		Amount:     -100.00,
 		Merchant:   &Merchant{Name: "New Store"},

@@ -67,3 +67,7 @@ __debug_bin
 notes/
 drafts/
 TODO.md
+
+# Integration test outputs
+test/integration/*.out
+test/integration/*.log

@@ -4,21 +4,12 @@ query Common_GetJointPlanningData($startDate: Date!, $endDate: Date!) {
       category {
         id
         name
-        icon
-        group {
-          id
-          name
-          type
-        }
       }
       monthlyAmounts {
         month
         plannedCashFlowAmount
-        plannedSetAsideAmount
         actualAmount
         remainingAmount
-        previousMonthRolloverAmount
-        rolloverType
       }
     }
   }

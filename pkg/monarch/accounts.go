@@ -2,6 +2,7 @@ package monarch
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"time"
 
@@ -205,10 +206,16 @@ func (s *accountService) GetBalances(ctx context.Context, startDate *time.Time) 
 		"startDate": startDate.Format("2006-01-02"),
 	}
 
+	// NOTE: We use json.RawMessage here because the Monarch API returns inconsistent
+	// formats for recentBalances depending on the account type and data availability:
+	// - Array of objects: [{"date":"2025-01-01","balance":100.50}]
+	// - Array of numbers: [100.50, 101.00, 102.00]
+	// - JSON string containing either format
+	// This is internal processing only - the public API returns strongly typed AccountBalance structs
 	var result struct {
 		Accounts []struct {
-			ID             string                   `json:"id"`
-			RecentBalances []map[string]interface{} `json:"recentBalances"`
+			ID             string          `json:"id"`
+			RecentBalances json.RawMessage `json:"recentBalances"` // Polymorphic response from API
 		} `json:"accounts"`
 	}
 
@@ -219,15 +226,83 @@ func (s *accountService) GetBalances(ctx context.Context, startDate *time.Time) 
 	// Transform the result into AccountBalance structs
 	var balances []*AccountBalance
 	for _, account := range result.Accounts {
-		for _, balance := range account.RecentBalances {
-			if dateStr, ok := balance["date"].(string); ok {
-				if balanceVal, ok := balance["balance"].(float64); ok {
-					date, _ := time.Parse("2006-01-02", dateStr)
+		// Skip if no balance data
+		if account.RecentBalances == nil || string(account.RecentBalances) == "null" || string(account.RecentBalances) == "[]" {
+			continue
+		}
+
+		// The API can return balances in different formats:
+		// 1. Array of objects: [{"date":"2025-01-01","balance":100.50}]
+		// 2. Array of numbers: [100.50, 101.00, 102.00]
+		// 3. JSON string containing either of the above
+
+		// First, check if it's an array of numbers
+		var balanceNumbers []float64
+		if err := json.Unmarshal(account.RecentBalances, &balanceNumbers); err == nil {
+			// It's an array of numbers - create balance entries with calculated dates
+			// Assuming daily balances starting from startDate
+			currentDate := *startDate
+			for _, bal := range balanceNumbers {
+				balances = append(balances, &AccountBalance{
+					AccountID: account.ID,
+					Date:      Date{Time: currentDate},
+					Balance:   bal,
+				})
+				currentDate = currentDate.AddDate(0, 0, 1) // Next day
+			}
+			continue
+		}
+
+		// Try as array of objects
+		var recentBalances []map[string]interface{}
+		if err := json.Unmarshal(account.RecentBalances, &recentBalances); err == nil {
+			// It's an array of objects
+			for _, balance := range recentBalances {
+				if dateStr, ok := balance["date"].(string); ok {
+					if balanceVal, ok := balance["balance"].(float64); ok {
+						date, _ := time.Parse("2006-01-02", dateStr)
+						balances = append(balances, &AccountBalance{
+							AccountID: account.ID,
+							Date:      Date{Time: date},
+							Balance:   balanceVal,
+						})
+					}
+				}
+			}
+			continue
+		}
+
+		// Try as JSON string
+		var balanceStr string
+		if err := json.Unmarshal(account.RecentBalances, &balanceStr); err == nil {
+			// It's a string, try to parse it
+			// First try as array of numbers
+			if err := json.Unmarshal([]byte(balanceStr), &balanceNumbers); err == nil {
+				currentDate := *startDate
+				for _, bal := range balanceNumbers {
 					balances = append(balances, &AccountBalance{
 						AccountID: account.ID,
-						Date:      date,
-						Balance:   balanceVal,
+						Date:      Date{Time: currentDate},
+						Balance:   bal,
 					})
+					currentDate = currentDate.AddDate(0, 0, 1)
+				}
+				continue
+			}
+
+			// Try as array of objects
+			if err := json.Unmarshal([]byte(balanceStr), &recentBalances); err == nil {
+				for _, balance := range recentBalances {
+					if dateStr, ok := balance["date"].(string); ok {
+						if balanceVal, ok := balance["balance"].(float64); ok {
+							date, _ := time.Parse("2006-01-02", dateStr)
+							balances = append(balances, &AccountBalance{
+								AccountID: account.ID,
+								Date:      Date{Time: date},
+								Balance:   balanceVal,
+							})
+						}
+					}
 				}
 			}
 		}
@@ -312,7 +387,7 @@ func (s *accountService) GetHistory(ctx context.Context, accountID string) (*Acc
 	for _, entry := range result.Account.BalanceHistory {
 		date, _ := time.Parse("2006-01-02", entry.Date)
 		history.Balances = append(history.Balances, &BalanceEntry{
-			Date:    date,
+			Date:    Date{Time: date},
 			Balance: entry.Balance,
 			Synced:  true,
 		})
@@ -377,19 +452,45 @@ func (s *accountService) GetHoldings(ctx context.Context, accountID string) ([]*
 func (s *accountService) Refresh(ctx context.Context, accountIDs ...string) (RefreshJob, error) {
 	query := s.client.loadQuery("accounts/refresh.graphql")
 
+	// If no account IDs provided, fetch all accounts
+	if len(accountIDs) == 0 {
+		accounts, err := s.List(ctx)
+		if err != nil {
+			return nil, errors.Wrap(err, "failed to fetch accounts for refresh")
+		}
+		for _, acc := range accounts {
+			accountIDs = append(accountIDs, acc.ID)
+		}
+	}
+
 	variables := map[string]interface{}{
-		"accountIds": accountIDs,
+		"input": map[string]interface{}{
+			"accountIds": accountIDs,
+		},
 	}
 
 	var result struct {
-		RequestAccountsRefresh bool `json:"requestAccountsRefresh"`
+		ForceRefreshAccounts struct {
+			Success bool `json:"success"`
+			Errors  []struct {
+				Message string `json:"message"`
+				Code    string `json:"code"`
+			} `json:"errors"`
+		} `json:"forceRefreshAccounts"`
 	}
 
 	if err := s.client.executeGraphQL(ctx, query, variables, &result); err != nil {
 		return nil, errors.Wrap(err, "failed to request accounts refresh")
 	}
 
-	if !result.RequestAccountsRefresh {
+	if len(result.ForceRefreshAccounts.Errors) > 0 {
+		return nil, &Error{
+			Code:    result.ForceRefreshAccounts.Errors[0].Code,
+			Message: result.ForceRefreshAccounts.Errors[0].Message,
+		}
+	}
+
+	if !result.ForceRefreshAccounts.Success {
 		return nil, errors.New("refresh request was not accepted")
 	}
 
@@ -413,28 +514,35 @@ func (s *accountService) RefreshAndWait(ctx context.Context, timeout time.Durati
 func (s *accountService) IsRefreshComplete(ctx context.Context, accountIDs ...string) (bool, error) {
 	query := s.client.loadQuery("accounts/is_refresh_complete.graphql")
 
-	variables := map[string]interface{}{
-		"accountIds": accountIDs,
-	}
-
 	var result struct {
 		Accounts []struct {
-			ID         string `json:"id"`
-			Credential *struct {
-				UpdateRequired                 bool       `json:"updateRequired"`
-				DisconnectedFromDataProviderAt *time.Time `json:"disconnectedFromDataProviderAt"`
-			} `json:"credential"`
+			ID                string `json:"id"`
+			HasSyncInProgress bool   `json:"hasSyncInProgress"`
 		} `json:"accounts"`
 	}
 
-	if err := s.client.executeGraphQL(ctx, query, variables, &result); err != nil {
+	if err := s.client.executeGraphQL(ctx, query, nil, &result); err != nil {
 		return false, errors.Wrap(err, "failed to check refresh status")
 	}
 
-	// Check if any account is still updating
-	for _, account := range result.Accounts {
-		if account.Credential != nil && account.Credential.UpdateRequired {
-			return false, nil
+	// If specific account IDs provided, filter to check only those
+	if len(accountIDs) > 0 {
+		accountMap := make(map[string]bool)
+		for _, id := range accountIDs {
+			accountMap[id] = true
+		}
+
+		for _, account := range result.Accounts {
+			if accountMap[account.ID] && account.HasSyncInProgress {
+				return false, nil
+			}
+		}
+	} else {
+		// Check all accounts
+		for _, account := range result.Accounts {
+			if account.HasSyncInProgress {
+				return false, nil
+			}
 		}
 	}
 

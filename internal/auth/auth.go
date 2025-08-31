@@ -1,6 +1,7 @@
 package auth
 
 import (
+	"bufio"
 	"bytes"
 	"context"
 	"crypto/hmac"
@@ -64,7 +65,7 @@ func (s *Service) Login(ctx context.Context, email, password string) error {
 func (s *Service) LoginWithMFA(ctx context.Context, email, password, mfaCode string) error {
 	// First attempt login
 	err := s.login(ctx, email, password, "")
-	if err != nil && err.Error() != "MFA required" {
+	if err != nil && err.Error() != "MFA required" && err.Error() != "Email OTP required" {
 		return err
 	}
 
@@ -82,12 +83,74 @@ func (s *Service) LoginWithTOTP(ctx context.Context, email, password, totpSecret
 
 	// First attempt login
 	err = s.login(ctx, email, password, "")
-	if err != nil && err.Error() != "MFA required" {
+	if err != nil && err.Error() != "MFA required" && err.Error() != "Email OTP required" {
 		return err
 	}
 
 	// Submit MFA with generated code
 	return s.submitMFA(ctx, email, password, code)
+}
+
+// LoginWithEmailOTP performs login with email OTP code
+func (s *Service) LoginWithEmailOTP(ctx context.Context, email, password, otpCode string) error {
+	// First attempt login
+	err := s.login(ctx, email, password, "")
+	if err != nil && err.Error() != "Email OTP required" {
+		return err
+	}
+
+	// Submit OTP code
+	return s.submitEmailOTP(ctx, email, password, otpCode)
+}
+
+// LoginInteractive performs interactive login with prompts for MFA/OTP when needed
+func (s *Service) LoginInteractive(ctx context.Context, email, password string) error {
+	// First attempt login
+	err := s.login(ctx, email, password, "")
+	if err == nil {
+		// Login succeeded without MFA/OTP
+		return nil
+	}
+
+	// Check if MFA or Email OTP is required
+	if err.Error() == "Email OTP required" {
+		// Prompt for Email OTP
+		fmt.Println("\n📧 Email OTP Required!")
+		fmt.Println("An OTP code has been sent to your email address.")
+		fmt.Print("Enter the code from your email: ")
+
+		reader := bufio.NewReader(os.Stdin)
+		otpCode, readErr := reader.ReadString('\n')
+		if readErr != nil {
+			return errors.Wrap(readErr, "failed to read OTP code")
+		}
+
+		// Trim whitespace and newline
+		otpCode = strings.TrimSpace(otpCode)
+
+		// Submit OTP code
+		return s.submitEmailOTP(ctx, email, password, otpCode)
+
+	} else if err.Error() == "MFA required" {
+		// Prompt for MFA code
+		fmt.Println("\n📱 MFA Required!")
+		fmt.Print("Enter your authenticator code: ")
+
+		reader := bufio.NewReader(os.Stdin)
+		mfaCode, readErr := reader.ReadString('\n')
+		if readErr != nil {
+			return errors.Wrap(readErr, "failed to read MFA code")
+		}
+
+		// Trim whitespace and newline
+		mfaCode = strings.TrimSpace(mfaCode)
+
+		// Submit MFA code
+		return s.submitMFA(ctx, email, password, mfaCode)
+	}
+
+	// Some other error occurred
+	return err
 }
 
 // GetSession returns the current session
@@ -166,10 +229,14 @@ func (s *Service) SetSession(session *types.Session) {
 
 // login performs the login request
 func (s *Service) login(ctx context.Context, email, password, mfaCode string) error {
-	// Create login request
+	// Create login request - matching Python client exactly
 	reqBody := map[string]interface{}{
-		"email":    email,
-		"password": password,
+		"username":           email,
+		"password":           password,
+		"trusted_device":     true,
+		"supports_mfa":       true,
+		"supports_email_otp": true,
+		"supports_recaptcha": true,
 	}
 
 	if mfaCode != "" {
@@ -227,6 +294,8 @@ func (s *Service) login(ctx context.Context, email, password, mfaCode string) er
 		switch loginResp.ErrorCode {
 		case "MFA_REQUIRED":
 			return errors.New("MFA required")
+		case "EMAIL_OTP_REQUIRED":
+			return errors.New("Email OTP required")
 		case "INVALID_CREDENTIALS":
 			return errors.New("login failed")
 		default:
@@ -353,6 +422,98 @@ func (s *Service) submitMFA(ctx context.Context, email, password, code string) e
 
 	if s.logger != nil {
 		s.logger.Info("MFA successful", "email", email)
+	}
+
+	return nil
+}
+
+// submitEmailOTP submits email OTP code
+func (s *Service) submitEmailOTP(ctx context.Context, email, password, code string) error {
+	// Create OTP request - using same endpoint but with email_otp field
+	reqBody := map[string]interface{}{
+		"username":           email,
+		"password":           password,
+		"email_otp":          code,
+		"trusted_device":     true,
+		"supports_mfa":       true,
+		"supports_email_otp": true,
+		"supports_recaptcha": true,
+	}
+
+	// Marshal request
+	body, err := json.Marshal(reqBody)
+	if err != nil {
+		return errors.Wrap(err, "failed to marshal email OTP request")
+	}
+
+	// Create HTTP request
+	req, err := http.NewRequestWithContext(ctx, "POST", s.baseURL+loginEndpoint, bytes.NewReader(body))
+	if err != nil {
+		return errors.Wrap(err, "failed to create email OTP request")
+	}
+
+	// Set headers
+	for k, v := range s.headers {
+		req.Header.Set(k, v)
+	}
+
+	// Log request
+	if s.logger != nil {
+		s.logger.Debug("Email OTP request", "email", email)
+	}
+
+	// Execute request
+	resp, err := s.httpClient.Do(req)
+	if err != nil {
+		return errors.Wrap(err, "email OTP request failed")
+	}
+	defer resp.Body.Close()
+
+	// Read response
+	respBody, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return errors.Wrap(err, "failed to read email OTP response")
+	}
+
+	// Parse response
+	var otpResp loginResponse
+	if err := json.Unmarshal(respBody, &otpResp); err != nil {
+		return errors.Wrap(err, "failed to parse email OTP response")
+	}
+
+	// Check for errors
+	if otpResp.ErrorCode != "" {
+		return &types.Error{
+			Code:    otpResp.ErrorCode,
+			Message: otpResp.Message,
+		}
+	}
+
+	// Check status
+	if resp.StatusCode != http.StatusOK {
+		return &types.Error{
+			Code:       "EMAIL_OTP_FAILED",
+			Message:    fmt.Sprintf("Email OTP failed with status %d", resp.StatusCode),
+			StatusCode: resp.StatusCode,
+		}
+	}
+
+	// Extract token
+	if otpResp.Token == "" {
+		return errors.New("no token in email OTP response")
+	}
+
+	// Create session
+	s.session = &types.Session{
+		Token:      otpResp.Token,
+		UserID:     otpResp.UserID,
+		Email:      email,
+		ExpiresAt:  time.Now().Add(24 * time.Hour),
+		DeviceUUID: s.headers["device-uuid"],
+	}
+
+	if s.logger != nil {
+		s.logger.Info("Email OTP successful", "email", email)
 	}
 
 	return nil

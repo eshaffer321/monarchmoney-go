@@ -318,9 +318,11 @@ func demonstrateCashflowService(ctx context.Context, client *monarch.Client) {
 	}
 
 	fmt.Printf("Cashflow for last month:\n")
-	fmt.Printf("  Income: $%.2f\n", cashflow.Income)
-	fmt.Printf("  Expenses: $%.2f\n", cashflow.Expenses)
-	fmt.Printf("  Net: $%.2f\n", cashflow.NetCashflow)
+	if cashflow.Summary != nil {
+		fmt.Printf("  Income: $%.2f\n", cashflow.Summary.Income)
+		fmt.Printf("  Expenses: $%.2f\n", cashflow.Summary.Expense)
+		fmt.Printf("  Savings: $%.2f\n", cashflow.Summary.Savings)
+	}
 
 	// Get cashflow summary
 	summary, err := client.Cashflow.GetSummary(ctx, &monarch.CashflowSummaryParams{
@@ -331,7 +333,7 @@ func demonstrateCashflowService(ctx context.Context, client *monarch.Client) {
 	if err != nil {
 		log.Printf("Error getting cashflow summary: %v", err)
 	} else {
-		fmt.Printf("Cashflow summary has %d intervals\n", len(summary.Summaries))
+		fmt.Printf("Cashflow summary: Income: $%.2f, Expenses: $%.2f\n", summary.Income, summary.Expense)
 	}
 }
 
