@@ -1,0 +1,8 @@
+query GetSnapshotsByAccountType($startDate: Date!, $timeframe: Timeframe!) {
+  snapshotsByAccountType(startDate: $startDate, timeframe: $timeframe) {
+    month
+    accountType
+    accountSubtype
+    sum
+  }
+}

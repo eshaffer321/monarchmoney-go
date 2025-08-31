@@ -1,0 +1,12 @@
+mutation CreateTransactionCategory($input: CreateCategoryInput!) {
+  createCategory(input: $input) {
+    category {
+      id
+      name
+    }
+    errors {
+      message
+      code
+    }
+  }
+}

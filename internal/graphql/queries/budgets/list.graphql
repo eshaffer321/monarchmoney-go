@@ -1,0 +1,23 @@
+query GetBudgets($startDate: Date!, $endDate: Date!, $useV2: Boolean) {
+  budgets(startDate: $startDate, endDate: $endDate, useV2: $useV2) {
+    id
+    categoryId
+    amount
+    rollover
+    startDate
+    endDate
+    spent
+    remaining
+    percentageComplete
+    category {
+      id
+      name
+      icon
+      group {
+        id
+        name
+        type
+      }
+    }
+  }
+}

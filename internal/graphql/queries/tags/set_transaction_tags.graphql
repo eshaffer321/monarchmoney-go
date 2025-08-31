@@ -1,0 +1,15 @@
+mutation SetTransactionTags($input: SetTransactionTagsInput!) {
+  setTransactionTags(input: $input) {
+    transaction {
+      id
+      tags {
+        id
+        name
+      }
+    }
+    errors {
+      message
+      code
+    }
+  }
+}

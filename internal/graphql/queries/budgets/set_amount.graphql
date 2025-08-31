@@ -1,0 +1,13 @@
+mutation SetBudgetAmount($input: SetBudgetAmountMutationInput!) {
+  setBudgetAmount(input: $input) {
+    budget {
+      id
+      amount
+      rollover
+    }
+    errors {
+      message
+      code
+    }
+  }
+}

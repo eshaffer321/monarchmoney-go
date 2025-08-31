@@ -1,0 +1,9 @@
+mutation Common_DeleteAccount($id: UUID!) {
+  deleteAccount(id: $id) {
+    deleted
+    errors {
+      message
+      code
+    }
+  }
+}

@@ -1,0 +1,20 @@
+mutation UpdateTransactionSplits($input: UpdateTransactionSplitsMutationInput!) {
+  updateTransactionSplits(input: $input) {
+    transaction {
+      id
+      splits {
+        id
+        amount
+        notes
+        category {
+          id
+          name
+        }
+      }
+    }
+    errors {
+      message
+      code
+    }
+  }
+}

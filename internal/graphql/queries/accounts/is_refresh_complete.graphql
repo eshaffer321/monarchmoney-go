@@ -1,0 +1,9 @@
+query GetAccounts($accountIds: [UUID!]) {
+  accounts(accountIds: $accountIds) {
+    id
+    credential {
+      updateRequired
+      disconnectedFromDataProviderAt
+    }
+  }
+}

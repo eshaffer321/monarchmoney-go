@@ -1,0 +1,11 @@
+query CheckRefreshStatus($accountIds: [UUID!]) {
+  accounts(accountIds: $accountIds) {
+    id
+    credential {
+      updateRequired
+      disconnectedFromDataProviderAt
+    }
+    syncing
+    lastSyncedAt
+  }
+}

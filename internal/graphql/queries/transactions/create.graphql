@@ -1,0 +1,11 @@
+mutation CreateTransaction($input: CreateTransactionMutationInput!) {
+  createTransaction(input: $input) {
+    transaction {
+      id
+    }
+    errors {
+      message
+      code
+    }
+  }
+}

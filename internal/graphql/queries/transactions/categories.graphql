@@ -1,0 +1,17 @@
+query GetTransactionCategories {
+  categories {
+    id
+    name
+    icon
+    order
+    systemCategory
+    isSystemCategory
+    isDisabled
+    group {
+      id
+      name
+      type
+      order
+    }
+  }
+}

@@ -1,0 +1,15 @@
+mutation Web_CreateManualAccount($input: CreateManualAccountMutationInput!) {
+  createManualAccount(input: $input) {
+    account {
+      id
+    }
+    errors {
+      fieldErrors {
+        field
+        messages
+      }
+      message
+      code
+    }
+  }
+}

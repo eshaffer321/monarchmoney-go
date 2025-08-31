@@ -1,0 +1,14 @@
+mutation CreateTransactionTag($input: CreateTagInput!) {
+  createTag(input: $input) {
+    tag {
+      id
+      name
+      color
+      order
+    }
+    errors {
+      message
+      code
+    }
+  }
+}
