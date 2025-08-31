@@ -322,11 +322,13 @@ func (s *transactionService) Categories() TransactionCategoryService {
 
 // transactionQueryBuilder implements TransactionQueryBuilder
 type transactionQueryBuilder struct {
-	client  *Client
-	filters map[string]interface{}
-	limit   int
-	offset  int
-	orderBy string
+	client    *Client
+	filters   map[string]interface{}
+	limit     int
+	offset    int
+	orderBy   string
+	minAmount float64
+	maxAmount float64
 }
 
 // Between sets date range filter
@@ -355,14 +357,18 @@ func (b *transactionQueryBuilder) WithTags(tagIDs ...string) TransactionQueryBui
 }
 
 // WithMinAmount sets minimum amount filter
+// NOTE: This filter is applied client-side as the GraphQL API may not support it directly
 func (b *transactionQueryBuilder) WithMinAmount(amount float64) TransactionQueryBuilder {
-	b.filters["minAmount"] = amount
+	// Store for client-side filtering
+	b.minAmount = amount
 	return b
 }
 
 // WithMaxAmount sets maximum amount filter
+// NOTE: This filter is applied client-side as the GraphQL API may not support it directly
 func (b *transactionQueryBuilder) WithMaxAmount(amount float64) TransactionQueryBuilder {
-	b.filters["maxAmount"] = amount
+	// Store for client-side filtering
+	b.maxAmount = amount
 	return b
 }
 
@@ -412,11 +418,33 @@ func (b *transactionQueryBuilder) Execute(ctx context.Context) (*TransactionList
 		return nil, errors.Wrap(err, "failed to get transactions")
 	}
 
+	// Apply client-side filtering for amount if needed
+	transactions := result.AllTransactions.Results
+	if b.minAmount > 0 || b.maxAmount > 0 {
+		filtered := make([]*Transaction, 0, len(transactions))
+		for _, txn := range transactions {
+			// Convert to absolute value for comparison
+			absAmount := txn.Amount
+			if absAmount < 0 {
+				absAmount = -absAmount
+			}
+
+			if b.minAmount > 0 && absAmount < b.minAmount {
+				continue
+			}
+			if b.maxAmount > 0 && absAmount > b.maxAmount {
+				continue
+			}
+			filtered = append(filtered, txn)
+		}
+		transactions = filtered
+	}
+
 	hasMore := (b.offset + b.limit) < result.AllTransactions.TotalCount
 
 	return &TransactionList{
-		Transactions: result.AllTransactions.Results,
-		TotalCount:   result.AllTransactions.TotalCount,
+		Transactions: transactions,
+		TotalCount:   result.AllTransactions.TotalCount, // Keep original count
 		HasMore:      hasMore,
 		NextOffset:   b.offset + b.limit,
 	}, nil

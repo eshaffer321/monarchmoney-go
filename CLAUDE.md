@@ -153,14 +153,40 @@ monarchmoney-go/
 
 ## 🔧 Development Guidelines
 
+### Test-Driven Development (TDD) Approach
+**IMPORTANT**: We follow strict TDD practices in this repository:
+
+1. **Always create a test FIRST to reproduce a bug**
+   - Write a test that demonstrates the bug
+   - Run the test - it should FAIL
+   - Fix the bug in the source code
+   - Re-run the test - it should PASS
+   - This ensures bugs are properly captured and prevented from regression
+
+2. **Example TDD workflow for bug fixes:**
+```bash
+# 1. Write failing test
+vim pkg/monarch/accounts_test.go  # Add test case for the bug
+
+# 2. Run test - should fail
+go test ./pkg/monarch -run TestAccountService_BugCase -v
+
+# 3. Fix the bug
+vim pkg/monarch/accounts.go  # Fix the implementation
+
+# 4. Run test - should pass
+go test ./pkg/monarch -run TestAccountService_BugCase -v
+```
+
 ### For Every Method Implementation:
-1. **Read** the Python implementation first
-2. **Extract** the GraphQL query to `graphql/queries/`
-3. **Define** types in `pkg/monarch/types.go`
-4. **Implement** with proper error handling
-5. **Test** with unit and integration tests
-6. **Validate** against Python client output
-7. **Document** any behavioral differences
+1. **Write** the test first (TDD)
+2. **Read** the Python implementation for reference
+3. **Extract** the GraphQL query to `graphql/queries/`
+4. **Define** types in `pkg/monarch/types.go`
+5. **Implement** with proper error handling
+6. **Test** with unit and integration tests
+7. **Validate** against Python client output
+8. **Document** any behavioral differences
 
 ### Testing Strategy:
 ```go

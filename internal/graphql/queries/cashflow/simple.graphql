@@ -1,0 +1,15 @@
+query GetCashflowSimple($startDate: Date!, $endDate: Date!) {
+  aggregates(
+    filters: {
+      startDate: $startDate
+      endDate: $endDate
+    }
+  ) {
+    summary {
+      sumIncome
+      sumExpense
+      savings
+      savingsRate
+    }
+  }
+}

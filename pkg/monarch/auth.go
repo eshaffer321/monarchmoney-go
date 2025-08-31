@@ -108,6 +108,29 @@ func (a *authService) LoginWithTOTP(ctx context.Context, email, password, totpSe
 	return nil
 }
 
+// LoginInteractive performs interactive login with prompts for MFA/OTP
+func (a *authService) LoginInteractive(ctx context.Context, email, password string) error {
+	if err := a.service.LoginInteractive(ctx, email, password); err != nil {
+		return err
+	}
+
+	// Get session and update client
+	session, err := a.service.GetSession()
+	if err != nil {
+		return err
+	}
+
+	a.client.session = a.convertSession(session)
+	a.client.transport.SetSession(session)
+
+	// Save session if configured
+	if a.client.options.SessionFile != "" {
+		_ = a.service.SaveSession(a.client.options.SessionFile)
+	}
+
+	return nil
+}
+
 // GetSession returns the current session
 func (a *authService) GetSession() (*Session, error) {
 	session, err := a.service.GetSession()

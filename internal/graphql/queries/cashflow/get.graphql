@@ -1,18 +1,50 @@
-query GetCashflow($startDate: Date!, $endDate: Date!, $limit: Int, $accountIds: [UUID!]) {
-  cashflow(startDate: $startDate, endDate: $endDate, limit: $limit, accountIds: $accountIds) {
-    startDate
-    endDate
-    income
-    expenses
-    netCashflow
-    byCategory {
+query Web_GetCashFlowPage($filters: TransactionFilterInput) {
+  byCategory: aggregates(filters: $filters, groupBy: ["category"]) {
+    groupBy {
       category {
         id
         name
-        icon
+        group {
+          id
+          type
+        }
       }
-      amount
-      count
+    }
+    summary {
+      sum
+    }
+  }
+  byCategoryGroup: aggregates(filters: $filters, groupBy: ["categoryGroup"]) {
+    groupBy {
+      categoryGroup {
+        id
+        name
+        type
+      }
+    }
+    summary {
+      sum
+    }
+  }
+  byMerchant: aggregates(filters: $filters, groupBy: ["merchant"], limit: 50) {
+    groupBy {
+      merchant {
+        id
+        name
+        logoUrl
+      }
+    }
+    summary {
+      sum
+    }
+  }
+  summary: aggregates(filters: $filters, fillEmptyValues: true) {
+    summary {
+      sum
+      sumIncome
+      sumExpense
+      savings
+      savingsRate
     }
   }
 }

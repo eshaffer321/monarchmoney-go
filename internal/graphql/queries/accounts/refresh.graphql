@@ -1,3 +1,9 @@
-mutation RequestAccountsRefresh($accountIds: [UUID!]!) {
-  requestAccountsRefresh(accountIds: $accountIds)
+mutation Common_ForceRefreshAccountsMutation($input: ForceRefreshAccountsInput!) {
+  forceRefreshAccounts(input: $input) {
+    success
+    errors {
+      message
+      code
+    }
+  }
 }
