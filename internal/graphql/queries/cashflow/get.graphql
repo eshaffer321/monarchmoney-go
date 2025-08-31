@@ -1,0 +1,18 @@
+query GetCashflow($startDate: Date!, $endDate: Date!, $limit: Int, $accountIds: [UUID!]) {
+  cashflow(startDate: $startDate, endDate: $endDate, limit: $limit, accountIds: $accountIds) {
+    startDate
+    endDate
+    income
+    expenses
+    netCashflow
+    byCategory {
+      category {
+        id
+        name
+        icon
+      }
+      amount
+      count
+    }
+  }
+}

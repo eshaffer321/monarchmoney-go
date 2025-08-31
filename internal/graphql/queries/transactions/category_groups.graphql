@@ -1,0 +1,8 @@
+query GetCategoryGroups {
+  categoryGroups {
+    id
+    name
+    type
+    order
+  }
+}

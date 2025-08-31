@@ -1,0 +1,8 @@
+query GetTransactionTags {
+  tags {
+    id
+    name
+    color
+    order
+  }
+}

@@ -1,0 +1,9 @@
+query GetTransactionsSummary {
+  transactionsSummary {
+    totalCount
+    totalIncome
+    totalExpenses
+    averageIncome
+    averageExpenses
+  }
+}

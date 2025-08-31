@@ -1,0 +1,9 @@
+mutation DeleteTransactionCategory($id: UUID!) {
+  deleteCategory(id: $id) {
+    deleted
+    errors {
+      message
+      code
+    }
+  }
+}

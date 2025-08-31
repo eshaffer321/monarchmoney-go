@@ -1,0 +1,24 @@
+mutation UpdateTransaction($input: UpdateTransactionMutationInput!) {
+  updateTransaction(input: $input) {
+    transaction {
+      id
+      amount
+      date
+      merchant {
+        id
+        name
+      }
+      category {
+        id
+        name
+      }
+      notes
+      hideFromReports
+      needsReview
+    }
+    errors {
+      message
+      code
+    }
+  }
+}

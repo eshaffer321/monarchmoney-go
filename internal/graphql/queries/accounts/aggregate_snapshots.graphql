@@ -1,0 +1,7 @@
+query GetAggregateSnapshots($filters: AggregateSnapshotFilters) {
+  aggregateSnapshots(filters: $filters) {
+    date
+    balance
+    __typename
+  }
+}

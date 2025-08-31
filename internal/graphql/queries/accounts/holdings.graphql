@@ -1,0 +1,21 @@
+query GetAccountHoldings($accountId: UUID!) {
+  account(id: $accountId) {
+    id
+    holdings {
+      edges {
+        node {
+          id
+          symbol
+          quantity
+          price
+          value
+          costBasis
+          updatedAt
+          holding {
+            name
+          }
+        }
+      }
+    }
+  }
+}

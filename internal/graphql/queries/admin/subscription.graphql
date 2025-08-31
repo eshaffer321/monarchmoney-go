@@ -1,0 +1,12 @@
+query GetSubscriptionDetails {
+  subscription {
+    id
+    planType
+    status
+    startDate
+    endDate
+    trialEndsAt
+    canceledAt
+    features
+  }
+}

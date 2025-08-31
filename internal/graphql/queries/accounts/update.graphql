@@ -1,0 +1,16 @@
+mutation Common_UpdateAccount($input: UpdateAccountMutationInput!) {
+  updateAccount(input: $input) {
+    account {
+      id
+      displayName
+      currentBalance
+      includeInNetWorth
+      hideFromList
+      hideTransactionsFromReports
+    }
+    errors {
+      message
+      code
+    }
+  }
+}

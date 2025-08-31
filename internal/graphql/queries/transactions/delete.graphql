@@ -1,0 +1,9 @@
+mutation DeleteTransaction($id: UUID!) {
+  deleteTransaction(id: $id) {
+    deleted
+    errors {
+      message
+      code
+    }
+  }
+}

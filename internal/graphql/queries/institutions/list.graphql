@@ -1,0 +1,10 @@
+query GetInstitutions {
+  institutions {
+    id
+    plaidInstitutionId
+    name
+    status
+    primaryColor
+    url
+  }
+}
