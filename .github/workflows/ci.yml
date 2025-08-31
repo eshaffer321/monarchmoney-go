@@ -34,16 +34,19 @@ jobs:
     - name: Download dependencies
       run: go mod download
     
-    - name: Run tests
+    - name: Run tests with coverage
       run: go test -v -race -coverprofile=coverage.txt -covermode=atomic ./...
     
-    - name: Upload coverage to Codecov
+    - name: Upload coverage reports to Codecov
       if: matrix.go-version == '1.21'
-      uses: codecov/codecov-action@v3
+      uses: codecov/codecov-action@v5
       with:
+        token: ${{ secrets.CODECOV_TOKEN }}
         file: ./coverage.txt
         flags: unittests
         name: codecov-umbrella
+        fail_ci_if_error: true
+        verbose: true
 
   lint:
     name: Lint
