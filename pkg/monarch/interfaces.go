@@ -144,12 +144,18 @@ type CashflowService interface {
 
 	// GetSummary retrieves cashflow summary
 	GetSummary(ctx context.Context, params *CashflowSummaryParams) (*CashflowSummary, error)
+
+	// GetSimple retrieves basic cashflow summary (for testing)
+	GetSimple(ctx context.Context, startDate, endDate time.Time) (*CashflowSummary, error)
 }
 
 // RecurringService handles recurring transactions
 type RecurringService interface {
 	// List retrieves all recurring transactions
 	List(ctx context.Context) ([]*RecurringTransaction, error)
+
+	// ListWithDateRange retrieves recurring transactions for a specific date range
+	ListWithDateRange(ctx context.Context, startDate, endDate time.Time) ([]*RecurringTransaction, error)
 }
 
 // InstitutionService handles financial institutions
@@ -177,6 +183,9 @@ type AuthService interface {
 
 	// LoginWithTOTP performs login with TOTP secret
 	LoginWithTOTP(ctx context.Context, email, password, totpSecret string) error
+
+	// LoginInteractive performs interactive login with prompts for MFA/OTP
+	LoginInteractive(ctx context.Context, email, password string) error
 
 	// GetSession returns the current session
 	GetSession() (*Session, error)

@@ -1,18 +1,10 @@
-query GetCashflowSummary($startDate: Date!, $endDate: Date!, $interval: CashflowInterval!, $categoryId: UUID, $accountsFilter: [UUID!]) {
-  cashflowSummary(
-    startDate: $startDate, 
-    endDate: $endDate, 
-    interval: $interval,
-    categoryId: $categoryId,
-    accountsFilter: $accountsFilter
-  ) {
-    interval
-    summaries {
-      startDate
-      endDate
-      income
-      expenses
-      netCashflow
+query Web_GetCashFlowSummary($filters: TransactionFilterInput) {
+  summary: aggregates(filters: $filters, fillEmptyValues: true) {
+    summary {
+      sumIncome
+      sumExpense
+      savings
+      savingsRate
     }
   }
 }

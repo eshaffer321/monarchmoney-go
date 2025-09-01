@@ -1,0 +1,16 @@
+query GetCashflowTest($startDate: Date!, $endDate: Date!) {
+  aggregates(
+    filters: {
+      startDate: $startDate
+      endDate: $endDate
+    }
+    fillEmptyValues: true
+  ) {
+    summary {
+      sumIncome
+      sumExpense
+      savings
+      savingsRate
+    }
+  }
+}

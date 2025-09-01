@@ -19,18 +19,51 @@ func (s *budgetService) List(ctx context.Context, startDate, endDate time.Time) 
 	variables := map[string]interface{}{
 		"startDate": startDate.Format("2006-01-02"),
 		"endDate":   endDate.Format("2006-01-02"),
-		"useV2":     true, // Use v2 API by default
 	}
 
 	var result struct {
-		Budgets []*Budget `json:"budgets"`
+		BudgetData *BudgetData `json:"budgetData"`
 	}
 
 	if err := s.client.executeGraphQL(ctx, query, variables, &result); err != nil {
 		return nil, errors.Wrap(err, "failed to get budgets")
 	}
 
-	return result.Budgets, nil
+	// Convert the nested structure to flat Budget list
+	// For now, return empty since the structure is different
+	// TODO: Properly convert BudgetData to []*Budget
+	if result.BudgetData == nil {
+		return []*Budget{}, nil
+	}
+
+	// Convert to Budget format
+	var budgets []*Budget
+	for _, catBudget := range result.BudgetData.MonthlyAmountsByCategory {
+		if catBudget.Category == nil {
+			continue
+		}
+
+		// Create a budget entry for each month
+		for _, monthly := range catBudget.MonthlyAmounts {
+			budget := &Budget{
+				CategoryID: catBudget.Category.ID,
+				Category:   catBudget.Category,
+				Amount:     monthly.PlannedCashFlowAmount,
+				Spent:      -monthly.ActualAmount, // Actual is negative for expenses
+				Remaining:  monthly.RemainingAmount,
+				Rollover:   monthly.RolloverType != "",
+			}
+
+			// Calculate percentage
+			if budget.Amount > 0 {
+				budget.PercentageComplete = (budget.Spent / budget.Amount) * 100
+			}
+
+			budgets = append(budgets, budget)
+		}
+	}
+
+	return budgets, nil
 }
 
 // SetAmount sets budget amount

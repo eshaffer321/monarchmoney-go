@@ -1,9 +1,6 @@
-query GetAccounts($accountIds: [UUID!]) {
-  accounts(accountIds: $accountIds) {
+query ForceRefreshAccountsQuery {
+  accounts {
     id
-    credential {
-      updateRequired
-      disconnectedFromDataProviderAt
-    }
+    hasSyncInProgress
   }
 }
