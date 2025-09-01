@@ -165,6 +165,42 @@ client := monarch.NewClientWithOptions("token", &monarch.ClientOptions{
 
 ## 🧪 Testing Patterns
 
+### TDD for Bug Fixes (IMPORTANT!)
+When you find a bug, **always write a failing test first**:
+
+```bash
+# 1. Write a test that reproduces the bug
+func TestAccountService_BugFix_Issue123(t *testing.T) {
+    // Setup that reproduces the problematic scenario
+    mockTransport := new(MockTransport)
+    client := setupTestClient(mockTransport)
+    
+    // Mock the exact response that causes the bug
+    response := `{"problematic": "response"}`
+    mockTransport.On("Execute", mock.Anything, mock.Anything, mock.Anything, mock.Anything).
+        Return(response, nil)
+    
+    // Call the method that's broken
+    result, err := client.Accounts.ProblematicMethod(ctx, "test")
+    
+    // This should fail before the fix
+    assert.NoError(t, err)
+    assert.Equal(t, "expected", result.Field)
+}
+
+# 2. Run the test - it should FAIL
+go test ./pkg/monarch -run TestAccountService_BugFix_Issue123 -v
+
+# 3. Fix the bug in the implementation
+# Edit pkg/monarch/accounts.go
+
+# 4. Run the test again - it should PASS  
+go test ./pkg/monarch -run TestAccountService_BugFix_Issue123 -v
+
+# 5. Run all tests to ensure no regression
+go test ./pkg/monarch/... -v
+```
+
 ### Standard Test Structure
 ```go
 func TestServiceName_MethodName(t *testing.T) {
@@ -239,10 +275,11 @@ mockTransport.On("Execute",
 ## 🚨 Before You Start Coding
 
 1. **Run the tests**: `go test ./pkg/monarch/... -v` (should all pass)
-2. **Check coverage**: Current coverage is ~37%, don't make it worse
-3. **Follow TDD**: Write the test first, then implement
-4. **Check Python client**: When in doubt, see how Python version works
-5. **Use existing patterns**: Don't invent new ways of doing things
+2. **For bugs**: **ALWAYS write a failing test first** to reproduce the issue (TDD)
+3. **For new features**: Add to interface first, then implement, then test  
+4. **Check coverage**: Current coverage is ~37%, don't make it worse
+5. **Check Python client**: When in doubt, see how Python version works
+6. **Use existing patterns**: Don't invent new ways of doing things
 
 ---
 
