@@ -444,8 +444,8 @@ func TestTransactionService_UpdateSplits_Old(t *testing.T) {
 			if !ok {
 				return false
 			}
-			splitData, ok := input["splitData"].([]map[string]interface{})
-			return ok && len(splitData) == 2
+			splits, ok := input["splits"].([]map[string]interface{})
+			return ok && len(splits) == 2
 		}),
 		mock.Anything,
 	).Return(mockResponse, nil)

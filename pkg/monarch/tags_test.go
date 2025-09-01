@@ -22,20 +22,18 @@ func TestTagService_List(t *testing.T) {
 
 	response := `{
 		
-			"householdTransactionTags": [
+			"tags": [
 				{
 					"id": "tag-1",
 					"name": "Tax Deductible",
 					"color": "#FF5733",
-					"order": 1,
-					"transactionCount": 42
+					"order": 1
 				},
 				{
 					"id": "tag-2",
 					"name": "Reimbursable",
 					"color": "#33FF57",
-					"order": 2,
-					"transactionCount": 15
+					"order": 2
 				}
 			]
 	}`
@@ -50,10 +48,10 @@ func TestTagService_List(t *testing.T) {
 	assert.Equal(t, "tag-1", tags[0].ID)
 	assert.Equal(t, "Tax Deductible", tags[0].Name)
 	assert.Equal(t, "#FF5733", tags[0].Color)
-	assert.Equal(t, 42, tags[0].TransactionCount)
+	assert.Equal(t, 1, tags[0].Order)
 	assert.Equal(t, "tag-2", tags[1].ID)
 	assert.Equal(t, "Reimbursable", tags[1].Name)
-	assert.Equal(t, 15, tags[1].TransactionCount)
+	assert.Equal(t, 2, tags[1].Order)
 	
 	mockTransport.AssertExpectations(t)
 }
@@ -71,13 +69,12 @@ func TestTagService_Create(t *testing.T) {
 
 	response := `{
 		
-			"createTransactionTag": {
+			"createTag": {
 				"tag": {
 					"id": "new-tag-123",
 					"name": "New Tag",
 					"color": "#123456",
-					"order": 5,
-					"transactionCount": 0
+					"order": 5
 				},
 				"errors": []
 			}
@@ -95,7 +92,7 @@ func TestTagService_Create(t *testing.T) {
 	assert.Equal(t, "new-tag-123", tag.ID)
 	assert.Equal(t, "New Tag", tag.Name)
 	assert.Equal(t, "#123456", tag.Color)
-	assert.Equal(t, 0, tag.TransactionCount)
+	assert.Equal(t, 5, tag.Order)
 	
 	mockTransport.AssertExpectations(t)
 }
@@ -113,7 +110,7 @@ func TestTagService_Create_WithError(t *testing.T) {
 
 	response := `{
 		
-			"createTransactionTag": {
+			"createTag": {
 				"tag": null,
 				"errors": [
 					{

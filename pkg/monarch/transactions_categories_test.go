@@ -3,7 +3,6 @@ package monarch
 import (
 	"context"
 	"testing"
-	"time"
 
 	"github.com/erickshaffer/monarchmoney-go/internal/graphql"
 	"github.com/stretchr/testify/assert"
@@ -103,18 +102,14 @@ func TestTransactionCategoryService_Create(t *testing.T) {
 	mockTransport.On("Execute", mock.Anything, mock.Anything, mock.MatchedBy(func(vars map[string]interface{}) bool {
 		input := vars["input"].(map[string]interface{})
 		return input["name"] == "Test Category" &&
-			input["group"] == "group-1" &&
-			input["icon"] == "❓" && // Default icon
-			input["rolloverEnabled"] == true &&
-			input["rolloverType"] == "monthly"
+			input["groupId"] == "group-1" &&
+			input["icon"] == "❓"
 	}), mock.Anything).Return(response, nil)
 
 	params := &CreateCategoryParams{
-		Name:            "Test Category",
-		GroupID:         "group-1",
-		RolloverEnabled: true,
-		RolloverType:    "monthly",
-		RolloverStartMonth: time.Now(),
+		Name:    "Test Category",
+		GroupID: "group-1",
+		Icon:    "❓",
 	}
 
 	category, err := client.Transactions.Categories().Create(context.Background(), params)
