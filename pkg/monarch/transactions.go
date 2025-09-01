@@ -233,29 +233,44 @@ func (s *transactionService) Delete(ctx context.Context, transactionID string) e
 func (s *transactionService) GetSummary(ctx context.Context) (*TransactionSummary, error) {
 	query := s.client.loadQuery("transactions/summary.graphql")
 
-	var result struct {
-		TransactionsSummary *TransactionSummary `json:"transactionsSummary"`
+	// The API expects a filters parameter, even if empty
+	variables := map[string]interface{}{
+		"filters": map[string]interface{}{},
 	}
 
-	if err := s.client.executeGraphQL(ctx, query, nil, &result); err != nil {
+	// The API returns aggregates as an array
+	var result struct {
+		Aggregates []struct {
+			Summary *TransactionSummary `json:"summary"`
+		} `json:"aggregates"`
+	}
+
+	if err := s.client.executeGraphQL(ctx, query, variables, &result); err != nil {
 		return nil, errors.Wrap(err, "failed to get transactions summary")
 	}
 
-	return result.TransactionsSummary, nil
+	if len(result.Aggregates) == 0 || result.Aggregates[0].Summary == nil {
+		return nil, errors.New("no transaction summary data available")
+	}
+
+	return result.Aggregates[0].Summary, nil
 }
 
 // GetSplits retrieves transaction splits
 func (s *transactionService) GetSplits(ctx context.Context, transactionID string) ([]*TransactionSplit, error) {
-	query := s.client.loadQuery("transactions/splits.graphql")
+	query := s.client.loadQuery("transactions/get_splits.graphql")
 
 	variables := map[string]interface{}{
-		"transactionId": transactionID,
+		"id": transactionID,
 	}
 
 	var result struct {
 		GetTransaction struct {
-			ID     string              `json:"id"`
-			Splits []*TransactionSplit `json:"splits"`
+			ID               string              `json:"id"`
+			Amount           float64             `json:"amount"`
+			Category         *TransactionCategory `json:"category"`
+			Merchant         *Merchant           `json:"merchant"`
+			SplitTransactions []*TransactionSplit `json:"splitTransactions"`
 		} `json:"getTransaction"`
 	}
 
@@ -263,52 +278,63 @@ func (s *transactionService) GetSplits(ctx context.Context, transactionID string
 		return nil, errors.Wrap(err, "failed to get transaction splits")
 	}
 
-	return result.GetTransaction.Splits, nil
+	return result.GetTransaction.SplitTransactions, nil
 }
 
 // UpdateSplits updates transaction splits
 func (s *transactionService) UpdateSplits(ctx context.Context, transactionID string, splits []*TransactionSplit) error {
 	query := s.client.loadQuery("transactions/update_splits.graphql")
 
-	splitInputs := make([]map[string]interface{}, len(splits))
+	// Build split data according to Python client format
+	splitData := make([]map[string]interface{}, len(splits))
 	for i, split := range splits {
-		splitInputs[i] = map[string]interface{}{
+		splitData[i] = map[string]interface{}{
 			"amount":     split.Amount,
-			"notes":      split.Notes,
 			"categoryId": split.CategoryID,
 		}
-		if split.Merchant != nil {
-			splitInputs[i]["merchant"] = split.Merchant.Name
+		
+		// Add optional fields if present
+		if split.Notes != "" {
+			splitData[i]["notes"] = split.Notes
+		}
+		if split.Merchant != nil && split.Merchant.Name != "" {
+			splitData[i]["merchantName"] = split.Merchant.Name
 		}
 	}
 
 	variables := map[string]interface{}{
 		"input": map[string]interface{}{
 			"transactionId": transactionID,
-			"splits":        splitInputs,
+			"splitData":     splitData,
 		},
 	}
 
 	var result struct {
-		UpdateTransactionSplits struct {
+		UpdateTransactionSplit struct {
 			Transaction *struct {
-				ID string `json:"id"`
+				ID                   string `json:"id"`
+				HasSplitTransactions bool   `json:"hasSplitTransactions"`
+				SplitTransactions    []*TransactionSplit `json:"splitTransactions"`
 			} `json:"transaction"`
 			Errors []struct {
 				Message string `json:"message"`
 				Code    string `json:"code"`
+				FieldErrors []struct {
+					Field    string   `json:"field"`
+					Messages []string `json:"messages"`
+				} `json:"fieldErrors"`
 			} `json:"errors"`
-		} `json:"updateTransactionSplits"`
+		} `json:"updateTransactionSplit"`
 	}
 
 	if err := s.client.executeGraphQL(ctx, query, variables, &result); err != nil {
 		return errors.Wrap(err, "failed to update transaction splits")
 	}
 
-	if len(result.UpdateTransactionSplits.Errors) > 0 {
+	if len(result.UpdateTransactionSplit.Errors) > 0 {
 		return &Error{
-			Code:    result.UpdateTransactionSplits.Errors[0].Code,
-			Message: result.UpdateTransactionSplits.Errors[0].Message,
+			Code:    result.UpdateTransactionSplit.Errors[0].Code,
+			Message: result.UpdateTransactionSplit.Errors[0].Message,
 		}
 	}
 
@@ -511,7 +537,7 @@ type transactionCategoryService struct {
 
 // List retrieves all categories
 func (s *transactionCategoryService) List(ctx context.Context) ([]*TransactionCategory, error) {
-	query := s.client.loadQuery("transactions/categories.graphql")
+	query := s.client.loadQuery("categories/list.graphql")
 
 	var result struct {
 		Categories []*TransactionCategory `json:"categories"`
@@ -526,18 +552,34 @@ func (s *transactionCategoryService) List(ctx context.Context) ([]*TransactionCa
 
 // Create creates a new category
 func (s *transactionCategoryService) Create(ctx context.Context, params *CreateCategoryParams) (*TransactionCategory, error) {
-	query := s.client.loadQuery("transactions/create_category.graphql")
+	query := s.client.loadQuery("categories/create.graphql")
 
+	// Build input according to Python client
 	input := map[string]interface{}{
-		"name":    params.Name,
-		"groupId": params.GroupID,
+		"name":  params.Name,
+		"group": params.GroupID,
+		"icon":  params.Icon,
 	}
 
-	if params.RollupCategoryID != "" {
-		input["rollupCategoryId"] = params.RollupCategoryID
+	// Default icon if not provided
+	if params.Icon == "" {
+		input["icon"] = "❓" // Unicode for question mark
 	}
-	if params.Icon != "" {
-		input["icon"] = params.Icon
+
+	// Add rollover settings if provided
+	if params.RolloverEnabled {
+		input["rolloverEnabled"] = true
+		input["rolloverType"] = params.RolloverType
+		if params.RolloverType == "" {
+			input["rolloverType"] = "monthly"
+		}
+		if !params.RolloverStartMonth.IsZero() {
+			input["rolloverStartMonth"] = params.RolloverStartMonth.Format("2006-01-02")
+		} else {
+			// Default to first of current month
+			now := time.Now()
+			input["rolloverStartMonth"] = time.Date(now.Year(), now.Month(), 1, 0, 0, 0, 0, time.UTC).Format("2006-01-02")
+		}
 	}
 
 	variables := map[string]interface{}{
@@ -570,7 +612,7 @@ func (s *transactionCategoryService) Create(ctx context.Context, params *CreateC
 
 // Delete deletes a category
 func (s *transactionCategoryService) Delete(ctx context.Context, categoryID string) error {
-	query := s.client.loadQuery("transactions/delete_category.graphql")
+	query := s.client.loadQuery("categories/delete.graphql")
 
 	variables := map[string]interface{}{
 		"id": categoryID,
@@ -616,7 +658,7 @@ func (s *transactionCategoryService) DeleteMultiple(ctx context.Context, categor
 
 // GetGroups retrieves category groups
 func (s *transactionCategoryService) GetGroups(ctx context.Context) ([]*CategoryGroup, error) {
-	query := s.client.loadQuery("transactions/category_groups.graphql")
+	query := s.client.loadQuery("categories/groups.graphql")
 
 	var result struct {
 		CategoryGroups []*CategoryGroup `json:"categoryGroups"`

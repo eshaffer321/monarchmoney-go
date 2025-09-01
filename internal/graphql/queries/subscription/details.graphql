@@ -1,0 +1,10 @@
+query GetSubscriptionDetails {
+  subscription {
+    id
+    paymentSource
+    referralCode
+    isOnFreeTrial
+    hasPremiumEntitlement
+    __typename
+  }
+}

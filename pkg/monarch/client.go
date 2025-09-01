@@ -34,6 +34,7 @@ type Client struct {
 	Institutions InstitutionService
 	Admin        AdminService
 	Auth         AuthService
+	Subscription SubscriptionService
 
 	// Internal fields
 	baseURL     string
@@ -169,6 +170,7 @@ func (c *Client) initServices() {
 	c.Cashflow = &cashflowService{client: c}
 	c.Recurring = &recurringService{client: c}
 	c.Institutions = &institutionService{client: c}
+	c.Subscription = &subscriptionService{client: c}
 	c.Admin = &adminService{client: c}
 	c.Auth = newAuthService(c)
 }

@@ -45,6 +45,12 @@ type AccountService interface {
 
 	// IsRefreshComplete checks if refresh is complete for accounts
 	IsRefreshComplete(ctx context.Context, accountIDs ...string) (bool, error)
+
+	// GetAggregateSnapshots retrieves daily balance snapshots
+	GetAggregateSnapshots(ctx context.Context, params *AggregateSnapshotsParams) ([]*AggregateSnapshot, error)
+
+	// UploadBalanceHistory uploads CSV balance history for an account
+	UploadBalanceHistory(ctx context.Context, accountID string, csvContent string) error
 }
 
 // TransactionService handles all transaction-related operations
@@ -195,6 +201,12 @@ type AuthService interface {
 
 	// LoadSession loads session from file
 	LoadSession(path string) error
+}
+
+// SubscriptionService handles subscription operations
+type SubscriptionService interface {
+	// GetDetails retrieves subscription details
+	GetDetails(ctx context.Context) (*SubscriptionDetails, error)
 }
 
 // RefreshJob represents an async refresh operation

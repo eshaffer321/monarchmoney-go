@@ -1,9 +1,13 @@
 package monarch
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
+	"mime/multipart"
+	"net/http"
 	"time"
 
 	"github.com/pkg/errors"
@@ -547,4 +551,115 @@ func (s *accountService) IsRefreshComplete(ctx context.Context, accountIDs ...st
 	}
 
 	return true, nil
+}
+
+// GetAggregateSnapshots retrieves daily balance snapshots
+func (s *accountService) GetAggregateSnapshots(ctx context.Context, params *AggregateSnapshotsParams) ([]*AggregateSnapshot, error) {
+	query := s.client.loadQuery("accounts/aggregate_snapshots.graphql")
+
+	// Build filters
+	filters := make(map[string]interface{})
+	
+	if params != nil {
+		if params.StartDate != nil {
+			filters["startDate"] = params.StartDate.Format("2006-01-02")
+		} else {
+			// Default to 150 years ago like the Python client
+			now := time.Now()
+			startDate := time.Date(now.Year()-150, now.Month(), 1, 0, 0, 0, 0, time.UTC)
+			filters["startDate"] = startDate.Format("2006-01-02")
+		}
+		
+		if params.EndDate != nil {
+			filters["endDate"] = params.EndDate.Format("2006-01-02")
+		}
+		
+		if params.AccountType != "" {
+			filters["accountType"] = params.AccountType
+		}
+	} else {
+		// Default to 150 years ago if no params provided
+		now := time.Now()
+		startDate := time.Date(now.Year()-150, now.Month(), 1, 0, 0, 0, 0, time.UTC)
+		filters["startDate"] = startDate.Format("2006-01-02")
+	}
+
+	variables := map[string]interface{}{
+		"filters": filters,
+	}
+
+	var result struct {
+		AggregateSnapshots []*AggregateSnapshot `json:"aggregateSnapshots"`
+	}
+
+	if err := s.client.executeGraphQL(ctx, query, variables, &result); err != nil {
+		return nil, errors.Wrap(err, "failed to get aggregate snapshots")
+	}
+
+	return result.AggregateSnapshots, nil
+}
+
+// UploadBalanceHistory uploads CSV balance history for an account
+func (s *accountService) UploadBalanceHistory(ctx context.Context, accountID string, csvContent string) error {
+	if accountID == "" || csvContent == "" {
+		return errors.New("accountID and csvContent cannot be empty")
+	}
+
+	// Create multipart form data
+	body := &bytes.Buffer{}
+	writer := multipart.NewWriter(body)
+
+	// Add CSV file field
+	part, err := writer.CreateFormFile("files", "upload.csv")
+	if err != nil {
+		return errors.Wrap(err, "failed to create form file")
+	}
+	if _, err := part.Write([]byte(csvContent)); err != nil {
+		return errors.Wrap(err, "failed to write CSV content")
+	}
+
+	// Add account mapping field
+	mapping := map[string]string{"upload.csv": accountID}
+	mappingJSON, err := json.Marshal(mapping)
+	if err != nil {
+		return errors.Wrap(err, "failed to marshal account mapping")
+	}
+	if err := writer.WriteField("account_files_mapping", string(mappingJSON)); err != nil {
+		return errors.Wrap(err, "failed to write account mapping field")
+	}
+
+	// Close the writer to finalize the form data
+	if err := writer.Close(); err != nil {
+		return errors.Wrap(err, "failed to close multipart writer")
+	}
+
+	// Create the request
+	url := fmt.Sprintf("%s/account-balance-history/upload/", s.client.baseURL)
+	req, err := http.NewRequestWithContext(ctx, "POST", url, body)
+	if err != nil {
+		return errors.Wrap(err, "failed to create request")
+	}
+
+	// Set headers
+	req.Header.Set("Content-Type", writer.FormDataContentType())
+	
+	// Add auth token if available
+	if s.client.session != nil && s.client.session.Token != "" {
+		req.Header.Set("Authorization", fmt.Sprintf("Token %s", s.client.session.Token))
+	}
+
+	// Execute the request
+	resp, err := s.client.httpClient.Do(req)
+	if err != nil {
+		return errors.Wrap(err, "failed to upload balance history")
+	}
+	defer resp.Body.Close()
+
+	// Check response status
+	if resp.StatusCode != http.StatusOK {
+		bodyBytes, _ := io.ReadAll(resp.Body)
+		return fmt.Errorf("HTTP %d: %s - %s", resp.StatusCode, resp.Status, string(bodyBytes))
+	}
+
+	return nil
 }
