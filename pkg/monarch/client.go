@@ -9,6 +9,7 @@ import (
 	"github.com/erickshaffer/monarchmoney-go/internal/graphql"
 	"github.com/erickshaffer/monarchmoney-go/internal/transport"
 	internalTypes "github.com/erickshaffer/monarchmoney-go/internal/types"
+	"github.com/getsentry/sentry-go"
 )
 
 const (
@@ -73,6 +74,12 @@ type ClientOptions struct {
 
 	// Hooks for observability
 	Hooks *internalTypes.Hooks
+
+	// SentryDSN enables Sentry error tracking when set
+	SentryDSN string
+
+	// SentryOptions allows custom Sentry configuration
+	SentryOptions *sentry.ClientOptions
 }
 
 // Logger interface for logging
@@ -99,6 +106,34 @@ type Transport interface {
 func NewClient(opts *ClientOptions) (*Client, error) {
 	if opts == nil {
 		opts = &ClientOptions{}
+	}
+
+	// Initialize Sentry if DSN is provided
+	if opts.SentryDSN != "" || opts.SentryOptions != nil {
+		sentryOpts := sentry.ClientOptions{}
+
+		// Use provided options if available, otherwise create new ones
+		if opts.SentryOptions != nil {
+			sentryOpts = *opts.SentryOptions
+		}
+
+		// Override DSN if provided separately
+		if opts.SentryDSN != "" {
+			sentryOpts.Dsn = opts.SentryDSN
+		}
+
+		// Set default environment if not provided
+		if sentryOpts.Environment == "" {
+			sentryOpts.Environment = "production"
+		}
+
+		// Initialize Sentry
+		if err := sentry.Init(sentryOpts); err != nil {
+			// Log error but don't fail client creation
+			if opts.Logger != nil {
+				opts.Logger.Error("Failed to initialize Sentry", "error", err)
+			}
+		}
 	}
 
 	// Set defaults
@@ -227,6 +262,12 @@ func (c *Client) executeGraphQL(ctx context.Context, query string, variables map
 	// Rate limiting
 	if c.options.RateLimiter != nil {
 		if err := c.options.RateLimiter.Wait(ctx); err != nil {
+			// Capture rate limiter errors in Sentry
+			if hub := sentry.GetHubFromContext(ctx); hub != nil {
+				hub.CaptureException(err)
+			} else {
+				sentry.CaptureException(err)
+			}
 			return fmt.Errorf("rate limiter: %w", err)
 		}
 	}
@@ -235,6 +276,32 @@ func (c *Client) executeGraphQL(ctx context.Context, query string, variables map
 	start := time.Now()
 	err := c.transport.Execute(ctx, query, variables, result)
 	duration := time.Since(start)
+
+	// Capture errors in Sentry
+	if err != nil {
+		// Add context to Sentry
+		if hub := sentry.GetHubFromContext(ctx); hub != nil {
+			hub.WithScope(func(scope *sentry.Scope) {
+				scope.SetTag("graphql.operation", extractOperationName(query))
+				scope.SetContext("graphql", map[string]interface{}{
+					"query":     query,
+					"variables": variables,
+					"duration":  duration.String(),
+				})
+				hub.CaptureException(err)
+			})
+		} else {
+			sentry.WithScope(func(scope *sentry.Scope) {
+				scope.SetTag("graphql.operation", extractOperationName(query))
+				scope.SetContext("graphql", map[string]interface{}{
+					"query":     query,
+					"variables": variables,
+					"duration":  duration.String(),
+				})
+				sentry.CaptureException(err)
+			})
+		}
+	}
 
 	// Response hook
 	if c.options.Hooks != nil && c.options.Hooks.OnResponse != nil {
@@ -252,4 +319,83 @@ func (c *Client) executeGraphQL(ctx context.Context, query string, variables map
 	}
 
 	return err
+}
+
+// Close flushes any pending Sentry events and performs cleanup
+func (c *Client) Close() {
+	// Flush Sentry events with a 2 second timeout
+	sentry.Flush(2 * time.Second)
+}
+
+// extractOperationName extracts the GraphQL operation name from a query
+func extractOperationName(query string) string {
+	// Simple extraction - looks for "query OperationName" or "mutation OperationName"
+	// This is a basic implementation; you might want to use a proper GraphQL parser
+	for _, prefix := range []string{"query ", "mutation ", "subscription "} {
+		if idx := findOperationName(query, prefix); idx != "" {
+			return idx
+		}
+	}
+	return "unknown"
+}
+
+// findOperationName finds the operation name after a given prefix
+func findOperationName(query, prefix string) string {
+	idx := 0
+	for {
+		pos := indexAt(query, prefix, idx)
+		if pos == -1 {
+			return ""
+		}
+
+		// Skip the prefix
+		start := pos + len(prefix)
+
+		// Find the end of the operation name (space, parenthesis, or brace)
+		end := start
+		for end < len(query) {
+			ch := query[end]
+			if ch == ' ' || ch == '(' || ch == '{' || ch == '\n' || ch == '\r' {
+				break
+			}
+			end++
+		}
+
+		if end > start {
+			name := query[start:end]
+			// Validate it's a valid operation name (starts with letter or underscore)
+			if len(name) > 0 && (isLetter(name[0]) || name[0] == '_') {
+				return name
+			}
+		}
+
+		idx = pos + 1
+	}
+}
+
+// indexAt finds the index of substr in s starting at position start
+func indexAt(s, substr string, start int) int {
+	if start >= len(s) {
+		return -1
+	}
+	idx := stringIndex(s[start:], substr)
+	if idx == -1 {
+		return -1
+	}
+	return start + idx
+}
+
+// stringIndex is a simple string index function
+func stringIndex(s, substr string) int {
+	for i := 0; i <= len(s)-len(substr); i++ {
+		if s[i:i+len(substr)] == substr {
+			return i
+		}
+	}
+	return -1
+}
+
+// isLetter checks if a byte is a letter
+func isLetter(ch byte) bool {
+	return (ch >= 'a' && ch <= 'z') || (ch >= 'A' && ch <= 'Z')
 }
