@@ -267,7 +267,7 @@ mockTransport.On("Execute",
 
 ## 🔗 Key Resources
 
-- **Python reference**: `/Users/erickshaffer/code/monarchmoney/monarchmoney/monarchmoney.py`
+- **Python reference**: [Original Python client](https://github.com/hammem/monarchmoney) - check `monarchmoney/monarchmoney.py`
 - **Example usage**: `examples/full_example.go`
 - **GraphQL queries**: `internal/graphql/queries/`
 - **All interfaces**: `pkg/monarch/interfaces.go`
