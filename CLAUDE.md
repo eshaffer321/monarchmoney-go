@@ -1,255 +1,286 @@
-# Claude Code Session Guide - Monarch Money Go Client
+# MonarchMoney Go Client - Developer Guide
 
-## 🎯 Project Mission
-We are creating a **production-grade Go client** for the Monarch Money API that is significantly better than the existing Python implementation located at `/Users/erickshaffer/code/monarchmoney/monarchmoney/monarchmoney.py`.
+## 🚀 Quick Development Commands
 
-## 📍 Important Locations
-- **Python Reference Implementation**: `/Users/erickshaffer/code/monarchmoney/monarchmoney/monarchmoney.py`
-- **Go Implementation**: `/Users/erickshaffer/code/monarchmoney-go`
-- **Python Tests**: `/Users/erickshaffer/code/monarchmoney/tests/test_monarchmoney.py`
-
-## 🏗️ Target Architecture
-
-### Core Principles
-1. **Domain-Driven Resource Pattern**: Operations grouped by resource type (Accounts, Transactions, etc.)
-2. **Interface-First Design**: Every major component should be an interface for testability
-3. **Context-Aware**: All operations must accept context.Context for cancellation/timeouts
-4. **Type Safety**: No `interface{}` or `map[string]interface{}` in public APIs
-5. **Error Wrapping**: Rich error context with stack traces
-6. **Concurrent by Design**: Leverage goroutines for bulk operations
-7. **Observable**: Built-in metrics, tracing, and logging hooks
-
-### API Design Pattern
-```go
-// Domain-driven resource access
-client := monarch.NewClient(token)
-
-// Clean resource-based API
-accounts, err := client.Accounts.List(ctx)
-account, err := client.Accounts.Get(ctx, accountID)
-holdings, err := client.Accounts.Holdings(ctx, accountID)
-err := client.Accounts.Delete(ctx, accountID)
-
-// Builder pattern for complex queries
-txns, err := client.Transactions.Query().
-    Between(start, end).
-    WithTags("vacation").
-    WithMinAmount(50).
-    Execute(ctx)
-
-// Async operations return jobs
-job := client.Admin.RefreshAccounts(ctx, accountIDs...)
-err := job.Wait(ctx, 30*time.Second)
-```
-
-### Package Structure
-```
-monarchmoney-go/
-├── pkg/monarch/
-│   ├── client.go          # Main client with service references
-│   ├── accounts.go        # AccountService implementation
-│   ├── transactions.go    # TransactionService implementation
-│   ├── budgets.go         # BudgetService implementation
-│   ├── cashflow.go        # CashflowService implementation
-│   ├── admin.go           # AdminService (refresh, sync, etc.)
-│   ├── types.go           # All type definitions
-│   ├── errors.go          # Custom error types
-│   ├── options.go         # Client configuration options
-│   └── filters.go         # Type-safe filter builders
-├── internal/
-│   ├── transport/         # HTTP/GraphQL transport layer
-│   ├── auth/              # Authentication logic
-│   ├── session/           # Session persistence
-│   └── cache/             # Smart caching layer
-├── graphql/
-│   ├── queries/           # All GraphQL query definitions
-│   ├── schema.graphql     # Full schema
-│   └── generated/         # Code-generated types
-├── cmd/
-│   ├── monarch/           # CLI tool
-│   └── validator/         # Python compatibility validator
-└── examples/              # Usage examples
-```
-
-## 📊 Implementation Progress
-
-### ✅ COMPLETED
-<!-- Update this section after completing each phase -->
-- [x] Project structure initialization
-- [x] Core interfaces defined (interfaces.go with all service contracts)
-- [x] Type definitions created (types.go with all domain models)
-- [x] GraphQL schema extracted and documented
-- [x] Authentication system (internal/auth with Login, MFA, TOTP support)
-- [x] Session management (JSON-based, not pickle)
-- [x] Base HTTP/GraphQL transport layer (internal/transport)
-- [x] AccountService fully implemented (all 13 methods)
-- [x] Error handling system with proper error types
-- [x] Client architecture with domain-driven services
-- [x] Method inventory documented (METHOD_INVENTORY.md)
-
-### 🔄 IN PROGRESS
-<!-- Current work item - ONE item at a time -->
-- Creating Python compatibility validator
-
-### 📝 Method Migration Checklist
-<!-- Track every method from Python client -->
-#### Authentication (COMPLETED ✅)
-- [x] login → Login()
-- [x] interactive_login → (not implemented - CLI only)
-- [x] multi_factor_authenticate → LoginWithMFA()
-- [x] save_session → SaveSession()
-- [x] load_session → LoadSession()
-
-#### Accounts (COMPLETED ✅)
-- [x] get_accounts → List()
-- [x] get_account_type_options → GetTypes()
-- [x] create_manual_account → Create()
-- [x] update_account → Update()
-- [x] delete_account → Delete()
-- [x] request_accounts_refresh → Refresh()
-- [x] request_accounts_refresh_and_wait → RefreshAndWait()
-- [x] is_accounts_refresh_complete → IsRefreshComplete()
-- [x] get_account_holdings → GetHoldings()
-- [x] get_account_history → GetHistory()
-- [x] get_recent_account_balances → GetBalances()
-- [x] get_account_snapshots_by_type → GetSnapshots()
-
-#### Transactions (COMPLETED ✅)
-- [x] get_transactions → Query().Execute()
-- [x] get_transactions_summary → GetSummary()
-- [x] create_transaction → Create()
-- [x] update_transaction → Update()
-- [x] delete_transaction → Delete()
-- [x] get_transaction_details → Get()
-- [x] get_transaction_splits → GetSplits()
-- [x] update_transaction_splits → UpdateSplits()
-- [x] get_transaction_categories → Categories().List()
-- [x] create_transaction_category → Categories().Create()
-- [x] delete_transaction_category → Categories().Delete()
-- [x] get_transaction_category_groups → Categories().GetGroups()
-- [x] get_transaction_tags → Tags.List()
-- [x] create_transaction_tag → Tags.Create()
-- [x] set_transaction_tags → Tags.SetTransactionTags()
-
-#### Budgets (COMPLETED ✅)
-- [x] get_budgets → List()
-- [x] set_budget_amount → SetAmount()
-
-#### Cashflow (COMPLETED ✅)
-- [x] get_cashflow → Get()
-- [x] get_cashflow_summary → GetSummary()
-
-#### Additional Methods (COMPLETED ✅)
-- [x] get_subscription_details → Subscription.GetDetails()
-- [x] get_aggregate_snapshots → Accounts.GetAggregateSnapshots()
-- [x] upload_account_balance_history → Accounts.UploadBalanceHistory()
-- [x] get_recurring_transactions → Recurring.List()
-- [x] get_institutions → Institutions.List()
-
-## 🚀 Next Steps for New Session
-<!-- ALWAYS UPDATE THIS SECTION BEFORE ENDING A SESSION -->
-
-### Immediate Next Task:
-1. Create comprehensive unit tests for all new methods
-2. Add integration tests with mocked responses
-3. Ensure test coverage meets 70% threshold
-4. Document any API differences from Python client
-
-### Context for Next Session:
-- All major methods from Python client are now implemented
-- Transaction splits, categories, and tags are fully functional
-- Subscription details and aggregate snapshots are complete
-- Balance history upload uses multipart form data
-- Need to focus on testing and documentation
-- Python client has poor error handling - we've improved it
-- Session management uses JSON instead of pickle
-- All GraphQL queries should be saved in graphql/queries/
-
-## 🔧 Development Guidelines
-
-### Test-Driven Development (TDD) Approach
-**IMPORTANT**: We follow strict TDD practices in this repository:
-
-1. **Always create a test FIRST to reproduce a bug**
-   - Write a test that demonstrates the bug
-   - Run the test - it should FAIL
-   - Fix the bug in the source code
-   - Re-run the test - it should PASS
-   - This ensures bugs are properly captured and prevented from regression
-
-2. **Example TDD workflow for bug fixes:**
 ```bash
-# 1. Write failing test
-vim pkg/monarch/accounts_test.go  # Add test case for the bug
+# Run all tests (most important command)
+go test ./pkg/monarch/... -v
 
-# 2. Run test - should fail
-go test ./pkg/monarch -run TestAccountService_BugCase -v
+# Run with coverage  
+go test ./pkg/monarch/... -coverprofile=coverage.out && go tool cover -html=coverage.out
 
-# 3. Fix the bug
-vim pkg/monarch/accounts.go  # Fix the implementation
+# Run specific service tests
+go test ./pkg/monarch -run TestAccountService -v
+go test ./pkg/monarch -run TestTransaction -v
 
-# 4. Run test - should pass
-go test ./pkg/monarch -run TestAccountService_BugCase -v
+# Debug a failing test
+go test ./pkg/monarch -run TestSpecificMethod -v -count=1
+
+# Check for issues
+go vet ./...
 ```
 
-### For Every Method Implementation:
-1. **Write** the test first (TDD)
-2. **Read** the Python implementation for reference
-3. **Extract** the GraphQL query to `graphql/queries/`
-4. **Define** types in `pkg/monarch/types.go`
-5. **Implement** with proper error handling
-6. **Test** with unit and integration tests
-7. **Validate** against Python client output
-8. **Document** any behavioral differences
+## 🧭 How to Navigate This Codebase
 
-### Testing Strategy:
+### When Adding New Features
+1. **Start**: `pkg/monarch/interfaces.go` - add method to relevant service interface
+2. **Implement**: `pkg/monarch/{service}.go` - implement the method
+3. **GraphQL**: Save query in `internal/graphql/queries/{service}/`
+4. **Types**: Add to `pkg/monarch/types.go` if needed
+5. **Test**: Create test in `pkg/monarch/{service}_test.go`
+
+### Key Files by Purpose
+```
+pkg/monarch/
+├── client.go           # Main client + service initialization
+├── interfaces.go       # ALL service method signatures
+├── types.go           # Data structures (40+ types)
+├── errors.go          # Error handling patterns
+├── date.go            # Custom date parsing (important!)
+└── accounts.go         # Example service implementation
+    transactions.go     
+    budgets.go         
+    ...
+
+internal/graphql/queries/   # GraphQL organized by service
+├── accounts/
+├── transactions/  
+├── budgets/
+...
+```
+
+## 🔧 Development Patterns
+
+### Adding a New Service Method
 ```go
-// Every method needs:
-// 1. Unit test with mocked transport
-// 2. Integration test with recorded responses  
-// 3. Compatibility test against Python
-// 4. Benchmark comparing to Python
+// 1. Add to interface (interfaces.go)
+type AccountService interface {
+    NewMethod(ctx context.Context, param string) (*Result, error)
+}
+
+// 2. Implement (accounts.go) 
+func (s *accountService) NewMethod(ctx context.Context, param string) (*Result, error) {
+    query := s.client.loadQuery("accounts/new_method.graphql")
+    
+    variables := map[string]interface{}{
+        "param": param,
+    }
+    
+    var result struct {
+        Data *Result `json:"data"`
+    }
+    
+    if err := s.client.executeGraphQL(ctx, query, variables, &result); err != nil {
+        return nil, errors.Wrap(err, "failed to execute new method")
+    }
+    
+    return result.Data, nil
+}
+
+// 3. Test (accounts_test.go)
+func TestAccountService_NewMethod(t *testing.T) {
+    mockTransport := new(MockTransport)
+    client := &Client{
+        transport:   mockTransport,
+        queryLoader: graphql.NewQueryLoader(),
+        options:     &ClientOptions{},
+        baseURL:     "https://api.test.com",
+    }
+    client.initServices()
+
+    response := `{"data": {"field": "value"}}`
+    mockTransport.On("Execute", mock.Anything, mock.Anything, mock.Anything, mock.Anything).
+        Return(response, nil)
+
+    result, err := client.Accounts.NewMethod(context.Background(), "test")
+
+    assert.NoError(t, err)
+    assert.NotNil(t, result)
+    mockTransport.AssertExpectations(t)
+}
 ```
 
-### Session Handoff Protocol:
-Before ending any session:
-1. Commit all working code
-2. Update COMPLETED section
-3. Move current task to COMPLETED or document blockers
-4. Update NEXT STEPS with specific instructions
-5. Note any important discoveries or decisions
+### GraphQL Response Handling
+```go
+// GraphQL responses don't always match the schema exactly
+// Common patterns:
 
-## 🎯 Success Metrics
+// 1. Direct field mapping
+var result struct {
+    Accounts []*Account `json:"accounts"`
+}
 
-### Must Have:
-- [ ] 100% API coverage from Python client
-- [ ] All tests passing
-- [ ] 10x performance improvement
-- [ ] Zero memory leaks
-- [ ] Concurrent operations support
+// 2. Nested response (common)
+var result struct {
+    GetAccount *Account `json:"getAccount"`
+}
 
-### Nice to Have:
-- [ ] CLI tool
-- [ ] Prometheus metrics
-- [ ] OpenTelemetry tracing
-- [ ] Circuit breaker
-- [ ] Response caching
+// 3. Array with single object (aggregates pattern)
+var result struct {
+    Aggregates []struct {
+        Summary *TransactionSummary `json:"summary"`
+    } `json:"aggregates"`
+}
+```
 
-## 🐛 Known Issues / Decisions
-<!-- Document any important findings or decisions made -->
-- Python uses pickle for session storage → Use JSON in Go
-- Python has weak error handling → Implement proper error types
-- Python mixes async/sync → Go will be fully concurrent
-- Python uses Dict[str, Any] → Strong typing throughout
+## 🐛 Common Issues & Solutions
 
-## 📚 References
-- [Monarch Money API](https://api.monarchmoney.com/graphql) (requires auth)
-- [Python Client Repo](https://github.com/hammem/monarchmoney)
-- GraphQL Best Practices for Go
-- [genqlient Documentation](https://github.com/Khan/genqlient)
+### Test Failures
+```bash
+# GraphQL field mismatch
+# Look for: `json: cannot unmarshal`
+# Fix: Check GraphQL response format in test vs actual API
+
+# Mock expectations failing  
+# Look for: `mock: Unexpected call`
+# Fix: Verify mock.Anything vs specific matchers
+
+# Date parsing errors
+# Look for: `parsing time` errors
+# Fix: Use Date type, not time.Time for API dates
+```
+
+### Authentication Issues
+```bash
+# Session token problems
+client := monarch.NewClient("your-session-token")
+
+# Login with MFA
+session, err := client.Auth.Login(ctx, "email", "password")
+if err != nil {
+    // Check for MFA challenge
+    if mfaErr, ok := err.(*MFARequired); ok {
+        session, err = client.Auth.LoginWithMFA(ctx, "email", "password", mfaErr.Token, "123456")
+    }
+}
+```
+
+### GraphQL Debugging
+```go
+// Enable GraphQL request logging (set in client options)
+client := monarch.NewClientWithOptions("token", &monarch.ClientOptions{
+    Debug: true,  // Logs all GraphQL requests
+})
+```
+
+## 🧪 Testing Patterns
+
+### TDD for Bug Fixes (IMPORTANT!)
+When you find a bug, **always write a failing test first**:
+
+```bash
+# 1. Write a test that reproduces the bug
+func TestAccountService_BugFix_Issue123(t *testing.T) {
+    // Setup that reproduces the problematic scenario
+    mockTransport := new(MockTransport)
+    client := setupTestClient(mockTransport)
+    
+    // Mock the exact response that causes the bug
+    response := `{"problematic": "response"}`
+    mockTransport.On("Execute", mock.Anything, mock.Anything, mock.Anything, mock.Anything).
+        Return(response, nil)
+    
+    // Call the method that's broken
+    result, err := client.Accounts.ProblematicMethod(ctx, "test")
+    
+    // This should fail before the fix
+    assert.NoError(t, err)
+    assert.Equal(t, "expected", result.Field)
+}
+
+# 2. Run the test - it should FAIL
+go test ./pkg/monarch -run TestAccountService_BugFix_Issue123 -v
+
+# 3. Fix the bug in the implementation
+# Edit pkg/monarch/accounts.go
+
+# 4. Run the test again - it should PASS  
+go test ./pkg/monarch -run TestAccountService_BugFix_Issue123 -v
+
+# 5. Run all tests to ensure no regression
+go test ./pkg/monarch/... -v
+```
+
+### Standard Test Structure
+```go
+func TestServiceName_MethodName(t *testing.T) {
+    // Setup mock transport
+    mockTransport := new(MockTransport)
+    client := &Client{
+        transport:   mockTransport,
+        queryLoader: graphql.NewQueryLoader(),
+        options:     &ClientOptions{},
+        baseURL:     "https://api.test.com",
+    }
+    client.initServices()
+
+    // Mock GraphQL response (NO "data" wrapper needed)
+    response := `{
+        "fieldName": "value"
+    }`
+
+    // Setup mock expectation
+    mockTransport.On("Execute", 
+        mock.Anything,           // context
+        mock.Anything,           // query string  
+        mock.Anything,           // variables
+        mock.Anything,           // result pointer
+    ).Return(response, nil)
+
+    // Execute method
+    result, err := client.ServiceName.MethodName(ctx, "param")
+
+    // Assert
+    assert.NoError(t, err)
+    assert.NotNil(t, result)
+    mockTransport.AssertExpectations(t)
+}
+```
+
+### Testing with Specific Parameters
+```go
+mockTransport.On("Execute", 
+    mock.Anything, 
+    mock.Anything,
+    mock.MatchedBy(func(vars map[string]interface{}) bool {
+        return vars["accountId"] == "test-123"
+    }),
+    mock.Anything,
+).Return(response, nil)
+```
+
+## 🔍 Key Architectural Decisions
+
+### Why These Patterns Exist
+- **Interface-first**: All services are interfaces for easy testing/mocking
+- **Context everywhere**: All methods accept context.Context for cancellation
+- **Structured errors**: Custom error types with codes, not generic errors  
+- **GraphQL transport**: Single HTTP client with GraphQL query loading
+- **No "data" wrapper in tests**: MonarchMoney API doesn't use standard GraphQL response format
+- **Custom Date type**: API returns dates in multiple formats, needs custom parsing
+
+### Python Client Differences
+- **Sessions**: JSON files instead of Python pickle
+- **Error handling**: Structured errors instead of generic exceptions
+- **Types**: Strong typing instead of `Dict[str, Any]`
+- **Concurrency**: Goroutines instead of asyncio
+
+## 🔗 Key Resources
+
+- **Python reference**: [Original Python client](https://github.com/hammem/monarchmoney) - check `monarchmoney/monarchmoney.py`
+- **Example usage**: `examples/full_example.go`
+- **GraphQL queries**: `internal/graphql/queries/`
+- **All interfaces**: `pkg/monarch/interfaces.go`
+
+## 🚨 Before You Start Coding
+
+1. **Run the tests**: `go test ./pkg/monarch/... -v` (should all pass)
+2. **For bugs**: **ALWAYS write a failing test first** to reproduce the issue (TDD)
+3. **For new features**: Add to interface first, then implement, then test  
+4. **Check coverage**: Current coverage is ~37%, don't make it worse
+5. **Check Python client**: When in doubt, see how Python version works
+6. **Use existing patterns**: Don't invent new ways of doing things
 
 ---
 
-**Remember**: This is a systematic rewrite. Every decision should improve upon the Python version. When in doubt, check the Python implementation at `/Users/erickshaffer/code/monarchmoney/monarchmoney/monarchmoney.py`.
-
-**Session Continuity**: Always assume the next session has no context. Document everything.
+**Most Important**: This codebase has consistent patterns. Follow them, don't create new ones.
