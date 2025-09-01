@@ -102,7 +102,7 @@ func TestTransactionCategoryService_Create(t *testing.T) {
 	mockTransport.On("Execute", mock.Anything, mock.Anything, mock.MatchedBy(func(vars map[string]interface{}) bool {
 		input := vars["input"].(map[string]interface{})
 		return input["name"] == "Test Category" &&
-			input["groupId"] == "group-1" &&
+			input["group"] == "group-1" &&
 			input["icon"] == "❓"
 	}), mock.Anything).Return(response, nil)
 

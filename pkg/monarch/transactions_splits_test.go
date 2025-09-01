@@ -34,7 +34,7 @@ func TestTransactionService_GetSplits(t *testing.T) {
 					"id": "merch-1",
 					"name": "Test Store"
 				},
-				"splits": [
+				"splitTransactions": [
 					{
 						"id": "split-1",
 						"amount": 50.25,
@@ -94,7 +94,7 @@ func TestTransactionService_UpdateSplits_New(t *testing.T) {
 				"transaction": {
 					"id": "test-txn-123",
 					"hasSplitTransactions": true,
-					"splits": [
+					"splitTransactions": [
 						{
 							"id": "split-1",
 							"amount": 60.00,
@@ -146,13 +146,15 @@ func TestTransactionService_GetSummary(t *testing.T) {
 
 	// Mock response - note that aggregates is an array
 	response := `{
-		"transactionsSummary": {
-			"totalCount": 5498,
-			"totalIncome": 651023.79,
-			"totalExpenses": -478055.57,
-			"averageIncome": 118.36,
-			"averageExpenses": -86.95
-		}
+		"aggregates": [{
+			"summary": {
+				"count": 5498,
+				"sumIncome": 651023.79,
+				"sumExpense": -478055.57,
+				"avg": 31.47,
+				"sum": 172968.22
+			}
+		}]
 	}`
 
 	mockTransport.On("Execute", mock.Anything, mock.Anything, mock.Anything, mock.Anything).
@@ -162,9 +164,9 @@ func TestTransactionService_GetSummary(t *testing.T) {
 
 	assert.NoError(t, err)
 	assert.NotNil(t, summary)
-	assert.Equal(t, 5498, summary.TotalCount)
-	assert.Equal(t, 651023.79, summary.TotalIncome)
-	assert.Equal(t, -478055.57, summary.TotalExpenses)
+	assert.Equal(t, 5498, summary.Count)
+	assert.Equal(t, 651023.79, summary.SumIncome)
+	assert.Equal(t, -478055.57, summary.SumExpense)
 	
 	mockTransport.AssertExpectations(t)
 }
@@ -182,7 +184,7 @@ func TestTransactionService_GetSummary_EmptyResult(t *testing.T) {
 
 	// Mock empty response
 	response := `{
-		"transactionsSummary": null
+		"aggregates": []
 	}`
 
 	mockTransport.On("Execute", mock.Anything, mock.Anything, mock.Anything, mock.Anything).
@@ -190,8 +192,9 @@ func TestTransactionService_GetSummary_EmptyResult(t *testing.T) {
 
 	summary, err := client.Transactions.GetSummary(context.Background())
 
-	assert.NoError(t, err)
+	assert.Error(t, err)
 	assert.Nil(t, summary)
+	assert.Contains(t, err.Error(), "no transaction summary data available")
 	
 	mockTransport.AssertExpectations(t)
 }

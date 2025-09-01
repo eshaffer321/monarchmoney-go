@@ -22,7 +22,7 @@ func TestTagService_List(t *testing.T) {
 
 	response := `{
 		
-			"tags": [
+			"householdTransactionTags": [
 				{
 					"id": "tag-1",
 					"name": "Tax Deductible",
@@ -69,7 +69,7 @@ func TestTagService_Create(t *testing.T) {
 
 	response := `{
 		
-			"createTag": {
+			"createTransactionTag": {
 				"tag": {
 					"id": "new-tag-123",
 					"name": "New Tag",
@@ -110,7 +110,7 @@ func TestTagService_Create_WithError(t *testing.T) {
 
 	response := `{
 		
-			"createTag": {
+			"createTransactionTag": {
 				"tag": null,
 				"errors": [
 					{
