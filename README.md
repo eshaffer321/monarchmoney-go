@@ -1,7 +1,7 @@
 # MonarchMoney Go Client
 
 [![CI](https://github.com/eshaffer321/monarchmoney-go/actions/workflows/ci.yml/badge.svg)](https://github.com/eshaffer321/monarchmoney-go/actions/workflows/ci.yml)
-[![codecov](https://codecov.io/gh/eshaffer321/monarchmoney-go/graph/badge.svg?token=YOUR_TOKEN)](https://codecov.io/gh/eshaffer321/monarchmoney-go)
+[![codecov](https://codecov.io/github/eshaffer321/monarchmoney-go/branch/main/graph/badge.svg)](https://codecov.io/github/eshaffer321/monarchmoney-go)
 [![Go Report Card](https://goreportcard.com/badge/github.com/eshaffer321/monarchmoney-go)](https://goreportcard.com/report/github.com/eshaffer321/monarchmoney-go)
 [![GoDoc](https://pkg.go.dev/badge/github.com/eshaffer321/monarchmoney-go)](https://pkg.go.dev/github.com/eshaffer321/monarchmoney-go)
 [![License](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
