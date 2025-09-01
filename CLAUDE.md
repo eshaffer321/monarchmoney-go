@@ -114,39 +114,53 @@ monarchmoney-go/
 - [x] get_recent_account_balances → GetBalances()
 - [x] get_account_snapshots_by_type → GetSnapshots()
 
-#### Transactions (11 methods)
-- [ ] get_transactions
-- [ ] get_transactions_summary
-- [ ] create_transaction
-- [ ] update_transaction
-- [ ] delete_transaction
-- [ ] get_transaction_details
-- [ ] get_transaction_splits
-- [ ] update_transaction_splits
-- [ ] get_transaction_categories
-- [ ] create_transaction_category
-- [ ] get_transaction_tags
+#### Transactions (COMPLETED ✅)
+- [x] get_transactions → Query().Execute()
+- [x] get_transactions_summary → GetSummary()
+- [x] create_transaction → Create()
+- [x] update_transaction → Update()
+- [x] delete_transaction → Delete()
+- [x] get_transaction_details → Get()
+- [x] get_transaction_splits → GetSplits()
+- [x] update_transaction_splits → UpdateSplits()
+- [x] get_transaction_categories → Categories().List()
+- [x] create_transaction_category → Categories().Create()
+- [x] delete_transaction_category → Categories().Delete()
+- [x] get_transaction_category_groups → Categories().GetGroups()
+- [x] get_transaction_tags → Tags.List()
+- [x] create_transaction_tag → Tags.Create()
+- [x] set_transaction_tags → Tags.SetTransactionTags()
 
-#### Budgets (3 methods)
-- [ ] get_budgets
-- [ ] set_budget_amount
-- [ ] get_cashflow
+#### Budgets (COMPLETED ✅)
+- [x] get_budgets → List()
+- [x] set_budget_amount → SetAmount()
 
-#### Additional (25+ methods)
-<!-- Full list to be populated from Python analysis -->
+#### Cashflow (COMPLETED ✅)
+- [x] get_cashflow → Get()
+- [x] get_cashflow_summary → GetSummary()
+
+#### Additional Methods (COMPLETED ✅)
+- [x] get_subscription_details → Subscription.GetDetails()
+- [x] get_aggregate_snapshots → Accounts.GetAggregateSnapshots()
+- [x] upload_account_balance_history → Accounts.UploadBalanceHistory()
+- [x] get_recurring_transactions → Recurring.List()
+- [x] get_institutions → Institutions.List()
 
 ## 🚀 Next Steps for New Session
 <!-- ALWAYS UPDATE THIS SECTION BEFORE ENDING A SESSION -->
 
 ### Immediate Next Task:
-1. Implement TransactionService with all 13 methods
-2. Create transaction query builder for advanced filtering
-3. Implement transaction categories sub-service
-4. Extract and save all transaction GraphQL queries
+1. Create comprehensive unit tests for all new methods
+2. Add integration tests with mocked responses
+3. Ensure test coverage meets 70% threshold
+4. Document any API differences from Python client
 
 ### Context for Next Session:
-- AccountService is fully implemented and can be used as reference
-- Transaction service needs builder pattern for complex queries
+- All major methods from Python client are now implemented
+- Transaction splits, categories, and tags are fully functional
+- Subscription details and aggregate snapshots are complete
+- Balance history upload uses multipart form data
+- Need to focus on testing and documentation
 - Python client has poor error handling - we've improved it
 - Session management uses JSON instead of pickle
 - All GraphQL queries should be saved in graphql/queries/

@@ -154,10 +154,11 @@ type CategoryGroup struct {
 
 // Tag represents a transaction tag
 type Tag struct {
-	ID    string `json:"id"`
-	Name  string `json:"name"`
-	Color string `json:"color"`
-	Order int    `json:"order"`
+	ID               string `json:"id"`
+	Name             string `json:"name"`
+	Color            string `json:"color"`
+	Order            int    `json:"order"`
+	TransactionCount int    `json:"transactionCount"`
 }
 
 // Budget represents a budget entry
@@ -283,11 +284,15 @@ type Subscription struct {
 
 // TransactionSummary represents transaction summary
 type TransactionSummary struct {
-	TotalCount      int     `json:"totalCount"`
-	TotalIncome     float64 `json:"totalIncome"`
-	TotalExpenses   float64 `json:"totalExpenses"`
-	AverageIncome   float64 `json:"averageIncome"`
-	AverageExpenses float64 `json:"averageExpenses"`
+	Avg        float64 `json:"avg"`
+	Count      int     `json:"count"`
+	Max        float64 `json:"max"`
+	MaxExpense float64 `json:"maxExpense"`
+	Sum        float64 `json:"sum"`
+	SumIncome  float64 `json:"sumIncome"`
+	SumExpense float64 `json:"sumExpense"`
+	First      string  `json:"first"`
+	Last       string  `json:"last"`
 }
 
 // TransactionList represents paginated transaction results
@@ -352,10 +357,12 @@ type UpdateTransactionParams struct {
 
 // CreateCategoryParams for creating categories
 type CreateCategoryParams struct {
-	Name             string `json:"name"`
-	GroupID          string `json:"groupId"`
-	RollupCategoryID string `json:"rollupCategoryId,omitempty"`
-	Icon             string `json:"icon"`
+	Name               string    `json:"name"`
+	GroupID            string    `json:"groupId"`
+	Icon               string    `json:"icon"`
+	RolloverEnabled    bool      `json:"rolloverEnabled"`
+	RolloverType       string    `json:"rolloverType"`        // "monthly", etc.
+	RolloverStartMonth time.Time `json:"rolloverStartMonth"`
 }
 
 // SnapshotParams for account snapshots
@@ -381,4 +388,26 @@ type CashflowSummaryParams struct {
 	Interval       string    `json:"interval"` // "day", "week", "month", "year"
 	CategoryID     string    `json:"categoryId,omitempty"`
 	AccountsFilter []string  `json:"accountsFilter,omitempty"`
+}
+
+// SubscriptionDetails represents subscription information
+type SubscriptionDetails struct {
+	ID                    string `json:"id"`
+	PaymentSource         string `json:"paymentSource"`
+	ReferralCode          string `json:"referralCode"`
+	IsOnFreeTrial         bool   `json:"isOnFreeTrial"`
+	HasPremiumEntitlement bool   `json:"hasPremiumEntitlement"`
+}
+
+// AggregateSnapshot represents a daily balance snapshot
+type AggregateSnapshot struct {
+	Date    string  `json:"date"`
+	Balance float64 `json:"balance"`
+}
+
+// AggregateSnapshotsParams for aggregate snapshots query
+type AggregateSnapshotsParams struct {
+	StartDate   *time.Time `json:"startDate,omitempty"`
+	EndDate     *time.Time `json:"endDate,omitempty"`
+	AccountType string     `json:"accountType,omitempty"`
 }

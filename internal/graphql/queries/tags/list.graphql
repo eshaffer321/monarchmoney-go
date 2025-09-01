@@ -1,8 +1,14 @@
-query GetTransactionTags {
-  tags {
+query GetHouseholdTransactionTags($search: String, $limit: Int, $bulkParams: BulkTransactionDataParams) {
+  householdTransactionTags(
+    search: $search
+    limit: $limit
+    bulkParams: $bulkParams
+  ) {
     id
     name
     color
     order
+    transactionCount
+    __typename
   }
 }

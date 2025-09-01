@@ -1,14 +1,17 @@
-mutation CreateTransactionTag($input: CreateTagInput!) {
-  createTag(input: $input) {
+mutation Common_CreateTransactionTag($input: CreateTransactionTagInput!) {
+  createTransactionTag(input: $input) {
     tag {
       id
       name
       color
       order
+      transactionCount
+      __typename
     }
     errors {
       message
-      code
+      __typename
     }
+    __typename
   }
 }

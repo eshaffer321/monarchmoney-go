@@ -186,8 +186,8 @@ func demonstrateTransactionService(ctx context.Context, client *monarch.Client) 
 		log.Printf("Error getting summary: %v", err)
 	} else {
 		fmt.Printf("Transaction Summary - Income: $%.2f, Expenses: $%.2f\n",
-			summary.TotalIncome,
-			summary.TotalExpenses)
+			summary.SumIncome,
+			summary.SumExpense)
 	}
 
 	// Get categories
