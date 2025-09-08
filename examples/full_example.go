@@ -6,7 +6,7 @@ import (
 	"log"
 	"time"
 
-	"github.com/erickshaffer/monarchmoney-go/pkg/monarch"
+	"github.com/eshaffer321/monarchmoney-go/pkg/monarch"
 )
 
 // This example demonstrates all available services and their methods

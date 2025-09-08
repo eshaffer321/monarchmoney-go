@@ -6,9 +6,9 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/erickshaffer/monarchmoney-go/internal/graphql"
-	"github.com/erickshaffer/monarchmoney-go/internal/transport"
-	internalTypes "github.com/erickshaffer/monarchmoney-go/internal/types"
+	"github.com/eshaffer321/monarchmoney-go/internal/graphql"
+	"github.com/eshaffer321/monarchmoney-go/internal/transport"
+	internalTypes "github.com/eshaffer321/monarchmoney-go/internal/types"
 	"github.com/getsentry/sentry-go"
 )
 

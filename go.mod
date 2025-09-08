@@ -1,4 +1,4 @@
-module github.com/erickshaffer/monarchmoney-go
+module github.com/eshaffer321/monarchmoney-go
 
 go 1.21
 

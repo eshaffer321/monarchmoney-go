@@ -9,7 +9,7 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/erickshaffer/monarchmoney-go/internal/types"
+	"github.com/eshaffer321/monarchmoney-go/internal/types"
 	"github.com/hashicorp/go-retryablehttp"
 	"github.com/pkg/errors"
 )
