@@ -6,8 +6,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/erickshaffer/monarchmoney-go/internal/graphql"
-	internalTypes "github.com/erickshaffer/monarchmoney-go/internal/types"
+	"github.com/eshaffer321/monarchmoney-go/internal/graphql"
+	internalTypes "github.com/eshaffer321/monarchmoney-go/internal/types"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"

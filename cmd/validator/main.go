@@ -13,7 +13,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/erickshaffer/monarchmoney-go/pkg/monarch"
+	"github.com/eshaffer321/monarchmoney-go/pkg/monarch"
 )
 
 // ValidatorConfig holds configuration for the validator
@@ -79,7 +79,7 @@ func main() {
 func parseFlags() *ValidatorConfig {
 	config := &ValidatorConfig{}
 
-	flag.StringVar(&config.PythonPath, "python", "/Users/erickshaffer/code/monarchmoney", "Path to Python client")
+	flag.StringVar(&config.PythonPath, "python", "/Users/eshaffer321/code/monarchmoney", "Path to Python client")
 	flag.StringVar(&config.GoToken, "go-token", os.Getenv("MONARCH_TOKEN"), "Token for Go client")
 	flag.StringVar(&config.PythonToken, "python-token", os.Getenv("MONARCH_TOKEN"), "Token for Python client")
 	flag.StringVar(&config.OutputDir, "output", "./validation_results", "Output directory for results")

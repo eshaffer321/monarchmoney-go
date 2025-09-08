@@ -6,7 +6,7 @@ import (
 	"log"
 	"os"
 
-	"github.com/erickshaffer/monarchmoney-go/pkg/monarch"
+	"github.com/eshaffer321/monarchmoney-go/pkg/monarch"
 	"github.com/getsentry/sentry-go"
 )
 
