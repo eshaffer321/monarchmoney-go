@@ -2,7 +2,9 @@ package monarch
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/pkg/errors"
@@ -309,6 +311,7 @@ func (s *transactionService) UpdateSplits(ctx context.Context, transactionID str
 		},
 	}
 
+	// Use RawMessage for errors field to handle both single object and array
 	var result struct {
 		UpdateTransactionSplit struct {
 			Transaction *struct {
@@ -316,14 +319,7 @@ func (s *transactionService) UpdateSplits(ctx context.Context, transactionID str
 				HasSplitTransactions bool   `json:"hasSplitTransactions"`
 				SplitTransactions    []*TransactionSplit `json:"splitTransactions"`
 			} `json:"transaction"`
-			Errors []struct {
-				Message string `json:"message"`
-				Code    string `json:"code"`
-				FieldErrors []struct {
-					Field    string   `json:"field"`
-					Messages []string `json:"messages"`
-				} `json:"fieldErrors"`
-			} `json:"errors"`
+			Errors json.RawMessage `json:"errors"`
 		} `json:"updateTransactionSplit"`
 	}
 
@@ -331,10 +327,68 @@ func (s *transactionService) UpdateSplits(ctx context.Context, transactionID str
 		return errors.Wrap(err, "failed to update transaction splits")
 	}
 
-	if len(result.UpdateTransactionSplit.Errors) > 0 {
-		return &Error{
-			Code:    result.UpdateTransactionSplit.Errors[0].Code,
-			Message: result.UpdateTransactionSplit.Errors[0].Message,
+	// Handle errors field which can be either a single object or an array
+	if result.UpdateTransactionSplit.Errors != nil && len(result.UpdateTransactionSplit.Errors) > 0 {
+		// Skip if it's an empty array: []
+		if string(result.UpdateTransactionSplit.Errors) == "[]" {
+			return nil
+		}
+
+		// Define the error structure
+		type errorStruct struct {
+			Message string `json:"message"`
+			Code    string `json:"code"`
+			FieldErrors []struct {
+				Field    string   `json:"field"`
+				Messages []string `json:"messages"`
+			} `json:"fieldErrors"`
+		}
+
+		// Try to unmarshal as a single error object first
+		var singleError errorStruct
+		if err := json.Unmarshal(result.UpdateTransactionSplit.Errors, &singleError); err == nil && singleError.Message != "" {
+			// Build detailed error message including field errors
+			errorMsg := singleError.Message
+			if len(singleError.FieldErrors) > 0 {
+				errorMsg += " ("
+				for i, fe := range singleError.FieldErrors {
+					if i > 0 {
+						errorMsg += "; "
+					}
+					errorMsg += fe.Field + ": " + strings.Join(fe.Messages, ", ")
+				}
+				errorMsg += ")"
+			}
+			
+			return &Error{
+				Code:    singleError.Code,
+				Message: errorMsg,
+			}
+		}
+
+		// Try to unmarshal as an array of errors
+		var errorArray []errorStruct
+		if err := json.Unmarshal(result.UpdateTransactionSplit.Errors, &errorArray); err == nil && len(errorArray) > 0 {
+			// Use the first error from the array
+			firstError := errorArray[0]
+			
+			// Build detailed error message including field errors
+			errorMsg := firstError.Message
+			if len(firstError.FieldErrors) > 0 {
+				errorMsg += " ("
+				for i, fe := range firstError.FieldErrors {
+					if i > 0 {
+						errorMsg += "; "
+					}
+					errorMsg += fe.Field + ": " + strings.Join(fe.Messages, ", ")
+				}
+				errorMsg += ")"
+			}
+			
+			return &Error{
+				Code:    firstError.Code,
+				Message: errorMsg,
+			}
 		}
 	}
 
