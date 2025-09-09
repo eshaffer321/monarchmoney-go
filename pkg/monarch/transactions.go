@@ -328,7 +328,7 @@ func (s *transactionService) UpdateSplits(ctx context.Context, transactionID str
 	}
 
 	// Handle errors field which can be either a single object or an array
-	if result.UpdateTransactionSplit.Errors != nil && len(result.UpdateTransactionSplit.Errors) > 0 {
+	if len(result.UpdateTransactionSplit.Errors) > 0 {
 		// Skip if it's an empty array: []
 		if string(result.UpdateTransactionSplit.Errors) == "[]" {
 			return nil
