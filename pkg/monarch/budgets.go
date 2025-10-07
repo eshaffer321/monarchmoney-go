@@ -46,12 +46,14 @@ func (s *budgetService) List(ctx context.Context, startDate, endDate time.Time) 
 		// Create a budget entry for each month
 		for _, monthly := range catBudget.MonthlyAmounts {
 			budget := &Budget{
-				CategoryID: catBudget.Category.ID,
-				Category:   catBudget.Category,
-				Amount:     monthly.PlannedCashFlowAmount,
-				Spent:      -monthly.ActualAmount, // Actual is negative for expenses
-				Remaining:  monthly.RemainingAmount,
-				Rollover:   monthly.RolloverType != "",
+				CategoryID:     catBudget.Category.ID,
+				Category:       catBudget.Category,
+				Amount:         monthly.PlannedCashFlowAmount,
+				Spent:          -monthly.ActualAmount, // Actual is negative for expenses
+				Remaining:      monthly.RemainingAmount,
+				Rollover:       monthly.RolloverType != "",
+				RolloverType:   monthly.RolloverType,
+				RolloverAmount: monthly.PreviousMonthRolloverAmount,
 			}
 
 			// Calculate percentage

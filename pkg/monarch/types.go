@@ -163,16 +163,18 @@ type Tag struct {
 
 // Budget represents a budget entry
 type Budget struct {
-	ID                 string               `json:"id"`
-	CategoryID         string               `json:"categoryId"`
-	Category           *TransactionCategory `json:"category"`
-	Amount             float64              `json:"amount"`
-	Rollover           bool                 `json:"rollover"`
-	StartDate          time.Time            `json:"startDate"`
-	EndDate            time.Time            `json:"endDate"`
-	Spent              float64              `json:"spent"`
-	Remaining          float64              `json:"remaining"`
-	PercentageComplete float64              `json:"percentageComplete"`
+	ID                      string               `json:"id"`
+	CategoryID              string               `json:"categoryId"`
+	Category                *TransactionCategory `json:"category"`
+	Amount                  float64              `json:"amount"`
+	Rollover                bool                 `json:"rollover"`
+	RolloverType            string               `json:"rolloverType"`
+	RolloverAmount          float64              `json:"rolloverAmount"`
+	StartDate               time.Time            `json:"startDate"`
+	EndDate                 time.Time            `json:"endDate"`
+	Spent                   float64              `json:"spent"`
+	Remaining               float64              `json:"remaining"`
+	PercentageComplete      float64              `json:"percentageComplete"`
 }
 
 // Cashflow represents comprehensive cashflow data
