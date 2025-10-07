@@ -1,6 +1,6 @@
 module github.com/eshaffer321/monarchmoney-go
 
-go 1.23
+go 1.21
 
 require (
 	github.com/getsentry/sentry-go v0.35.1
@@ -14,7 +14,6 @@ require (
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/hashicorp/go-cleanhttp v0.5.2 // indirect
 	github.com/kr/text v0.2.0 // indirect
-	github.com/mark3labs/mcp-go v0.41.1 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/stretchr/objx v0.5.2 // indirect
 	golang.org/x/sys v0.18.0 // indirect
