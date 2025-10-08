@@ -68,6 +68,72 @@ func (s *budgetService) List(ctx context.Context, startDate, endDate time.Time) 
 	return budgets, nil
 }
 
+// ListWithGoals retrieves budgets with associated goals for a date range
+func (s *budgetService) ListWithGoals(ctx context.Context, startDate, endDate time.Time) ([]*BudgetWithGoals, error) {
+	query := s.client.loadQuery("budgets/list_with_goals.graphql")
+
+	variables := map[string]interface{}{
+		"startDate": startDate.Format("2006-01-02"),
+		"endDate":   endDate.Format("2006-01-02"),
+	}
+
+	var result struct {
+		BudgetData *BudgetData `json:"budgetData"`
+		GoalsV2    *struct {
+			Goals []*Goal `json:"goals"`
+		} `json:"goalsV2"`
+	}
+
+	if err := s.client.executeGraphQL(ctx, query, variables, &result); err != nil {
+		return nil, errors.Wrap(err, "failed to get budgets with goals")
+	}
+
+	// Convert the nested structure to flat Budget list with goals
+	if result.BudgetData == nil {
+		return []*BudgetWithGoals{}, nil
+	}
+
+	// Convert to BudgetWithGoals format
+	var budgetsWithGoals []*BudgetWithGoals
+	for _, catBudget := range result.BudgetData.MonthlyAmountsByCategory {
+		if catBudget.Category == nil {
+			continue
+		}
+
+		// Create a budget entry for each month
+		for _, monthly := range catBudget.MonthlyAmounts {
+			budget := &Budget{
+				CategoryID:     catBudget.Category.ID,
+				Category:       catBudget.Category,
+				Amount:         monthly.PlannedCashFlowAmount,
+				Spent:          -monthly.ActualAmount, // Actual is negative for expenses
+				Remaining:      monthly.RemainingAmount,
+				Rollover:       monthly.RolloverType != "",
+				RolloverType:   monthly.RolloverType,
+				RolloverAmount: monthly.PreviousMonthRolloverAmount,
+			}
+
+			// Calculate percentage
+			if budget.Amount > 0 {
+				budget.PercentageComplete = (budget.Spent / budget.Amount) * 100
+			}
+
+			budgetWithGoals := &BudgetWithGoals{
+				Budget: budget,
+			}
+
+			// Add goals if available
+			if result.GoalsV2 != nil && result.GoalsV2.Goals != nil {
+				budgetWithGoals.Goals = result.GoalsV2.Goals
+			}
+
+			budgetsWithGoals = append(budgetsWithGoals, budgetWithGoals)
+		}
+	}
+
+	return budgetsWithGoals, nil
+}
+
 // SetAmount sets budget amount
 func (s *budgetService) SetAmount(ctx context.Context, budgetID string, amount float64, rollover bool, startDate time.Time) error {
 	query := s.client.loadQuery("budgets/set_amount.graphql")
