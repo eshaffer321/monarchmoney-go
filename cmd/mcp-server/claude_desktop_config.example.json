@@ -1,0 +1,11 @@
+{
+  "mcpServers": {
+    "monarch-money": {
+      "command": "/usr/local/bin/monarch-mcp-server",
+      "args": [],
+      "env": {
+        "MONARCH_TOKEN": "your-session-token-here"
+      }
+    }
+  }
+}
