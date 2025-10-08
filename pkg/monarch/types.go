@@ -177,6 +177,31 @@ type Budget struct {
 	PercentageComplete      float64              `json:"percentageComplete"`
 }
 
+// Goal represents a financial goal (goalsV2)
+type Goal struct {
+	ID                      string               `json:"id"`
+	Name                    string               `json:"name"`
+	Type                    string               `json:"type"`
+	Amount                  float64              `json:"amount"`
+	Priority                int                  `json:"priority"`
+	TargetDate              *time.Time           `json:"targetDate,omitempty"`
+	TargetAmount            float64              `json:"targetAmount"`
+	CurrentAmount           float64              `json:"currentAmount"`
+	ImageURL                *string              `json:"imageUrl,omitempty"`
+	AccountID               *string              `json:"accountId,omitempty"`
+	Account                 *Account             `json:"account,omitempty"`
+	PercentageComplete      float64              `json:"percentageComplete"`
+	MonthlyContribution     float64              `json:"monthlyContribution"`
+	CreatedAt               time.Time            `json:"createdAt"`
+	UpdatedAt               time.Time            `json:"updatedAt"`
+}
+
+// BudgetWithGoals extends Budget to include associated goals
+type BudgetWithGoals struct {
+	*Budget
+	Goals []*Goal `json:"goals"`
+}
+
 // Cashflow represents comprehensive cashflow data
 type Cashflow struct {
 	StartDate       time.Time                `json:"startDate"`

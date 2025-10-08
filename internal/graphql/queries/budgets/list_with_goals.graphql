@@ -1,0 +1,47 @@
+query GetBudgetsWithGoals($startDate: Date!, $endDate: Date!) {
+  budgetData(startMonth: $startDate, endMonth: $endDate) {
+    monthlyAmountsByCategory {
+      category {
+        id
+        name
+        icon
+        group {
+          id
+          name
+          type
+        }
+      }
+      monthlyAmounts {
+        month
+        plannedCashFlowAmount
+        plannedSetAsideAmount
+        actualAmount
+        remainingAmount
+        previousMonthRolloverAmount
+        rolloverType
+      }
+    }
+  }
+  goalsV2 {
+    goals {
+      id
+      name
+      type
+      amount
+      priority
+      targetDate
+      targetAmount
+      currentAmount
+      imageUrl
+      accountId
+      account {
+        id
+        displayName
+      }
+      percentageComplete
+      monthlyContribution
+      createdAt
+      updatedAt
+    }
+  }
+}

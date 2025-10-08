@@ -139,6 +139,9 @@ type BudgetService interface {
 	// List retrieves budgets for a date range
 	List(ctx context.Context, startDate, endDate time.Time) ([]*Budget, error)
 
+	// ListWithGoals retrieves budgets with associated goals for a date range
+	ListWithGoals(ctx context.Context, startDate, endDate time.Time) ([]*BudgetWithGoals, error)
+
 	// SetAmount sets budget amount
 	SetAmount(ctx context.Context, budgetID string, amount float64, rollover bool, startDate time.Time) error
 }
