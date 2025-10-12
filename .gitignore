@@ -71,3 +71,10 @@ TODO.md
 # Integration test outputs
 test/integration/*.out
 test/integration/*.log
+
+# MCP server binary
+mcp-monarch
+cmd/mcp-server/mcp-monarch
+
+# Test files
+test_*.go
