@@ -30,9 +30,21 @@ type BudgetEntry struct {
 	Percentage     float64 `json:"percentage" jsonschema:"Percentage of budget spent"`
 }
 
+type GoalEntry struct {
+	ID                 string  `json:"id" jsonschema:"Goal ID"`
+	Name               string  `json:"name" jsonschema:"Goal name"`
+	CurrentBalance     float64 `json:"currentBalance" jsonschema:"Current balance toward goal"`
+	TargetBalance      float64 `json:"targetBalance" jsonschema:"Target balance for goal"`
+	Type               string  `json:"type" jsonschema:"Goal type"`
+	PaceType           string  `json:"paceType,omitempty" jsonschema:"Pace status (on_track, behind, etc.)"`
+	OriginAccount      string  `json:"originAccount,omitempty" jsonschema:"Origin account name"`
+	DestinationAccount string  `json:"destinationAccount,omitempty" jsonschema:"Destination account name"`
+}
+
 type GetBudgetOutput struct {
 	Month   string        `json:"month" jsonschema:"Month of the budget data"`
 	Budgets []BudgetEntry `json:"budgets" jsonschema:"List of budget entries for each category"`
+	Goals   []GoalEntry   `json:"goals,omitempty" jsonschema:"List of goals associated with this budget"`
 }
 
 func (t *monarchTools) GetBudget(ctx context.Context, req *mcp.CallToolRequest, input GetBudgetInput) (*mcp.CallToolResult, GetBudgetOutput, error) {
@@ -72,6 +84,7 @@ func (t *monarchTools) GetBudget(ctx context.Context, req *mcp.CallToolRequest, 
 	return nil, GetBudgetOutput{
 		Month:   input.Month,
 		Budgets: entries,
+		Goals:   nil, // Goals not currently supported in budget query
 	}, nil
 }
 
