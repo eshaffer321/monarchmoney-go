@@ -473,3 +473,114 @@ func TestTransactionService_UpdateSplits_Old(t *testing.T) {
 	assert.NoError(t, err)
 	mockTransport.AssertExpectations(t)
 }
+
+// TestTransactionService_Update_CorrectFieldNames verifies that Update() uses
+// the correct GraphQL field names as per the Python reference implementation:
+// - "category" (not "categoryId")
+// - "name" (not "merchant")
+// This test documents the expected API contract.
+func TestTransactionService_Update_CorrectFieldNames(t *testing.T) {
+	// Setup
+	mockTransport := new(MockTransport)
+	client := &Client{
+		transport:   mockTransport,
+		queryLoader: graphql.NewQueryLoader(),
+		options:     &ClientOptions{},
+		baseURL:     "https://api.test.com",
+	}
+	service := newTransactionService(client)
+
+	// Mock response
+	mockResponse := `{
+		"updateTransaction": {
+			"transaction": {
+				"id": "txn-123",
+				"amount": -50.00,
+				"date": "2024-01-15T00:00:00Z",
+				"merchant": {
+					"id": "merch-456",
+					"name": "New Store"
+				},
+				"category": {
+					"id": "cat-groceries",
+					"name": "Groceries"
+				},
+				"notes": "Updated transaction",
+				"hideFromReports": false,
+				"needsReview": false
+			},
+			"errors": []
+		}
+	}`
+
+	// This matcher verifies the CORRECT field names are used
+	mockTransport.On("Execute",
+		mock.Anything,
+		mock.AnythingOfType("string"),
+		mock.MatchedBy(func(variables map[string]interface{}) bool {
+			input, ok := variables["input"].(map[string]interface{})
+			if !ok {
+				t.Logf("ERROR: input is not a map: %T", variables["input"])
+				return false
+			}
+
+			// Verify transaction ID
+			if input["id"] != "txn-123" {
+				t.Logf("ERROR: Wrong transaction ID: %v", input["id"])
+				return false
+			}
+
+			// CRITICAL: Verify "category" field is used (not "categoryId")
+			categoryValue, hasCategoryField := input["category"]
+			if !hasCategoryField {
+				t.Logf("ERROR: Missing 'category' field. Found fields: %v", input)
+				return false
+			}
+			if categoryValue != "cat-groceries" {
+				t.Logf("ERROR: Wrong category value: %v", categoryValue)
+				return false
+			}
+
+			// CRITICAL: Verify "name" field is used for merchant (not "merchant")
+			nameValue, hasNameField := input["name"]
+			if !hasNameField {
+				t.Logf("ERROR: Missing 'name' field for merchant. Found fields: %v", input)
+				return false
+			}
+			if nameValue != "New Store" {
+				t.Logf("ERROR: Wrong merchant name value: %v", nameValue)
+				return false
+			}
+
+			// Verify notes field
+			if input["notes"] != "Updated note" {
+				t.Logf("ERROR: Wrong notes value: %v", input["notes"])
+				return false
+			}
+
+			t.Logf("SUCCESS: All field names are correct: %v", input)
+			return true
+		}),
+		mock.Anything,
+	).Return(mockResponse, nil)
+
+	// Execute
+	ctx := context.Background()
+	categoryID := "cat-groceries"
+	merchantName := "New Store"
+	notes := "Updated note"
+
+	transaction, err := service.Update(ctx, "txn-123", &UpdateTransactionParams{
+		CategoryID: &categoryID,
+		Merchant:   &merchantName,
+		Notes:      &notes,
+	})
+
+	// Assert
+	require.NoError(t, err)
+	assert.NotNil(t, transaction)
+	assert.Equal(t, "txn-123", transaction.ID)
+	assert.Equal(t, "cat-groceries", transaction.Category.ID)
+	assert.Equal(t, "New Store", transaction.Merchant.Name)
+	mockTransport.AssertExpectations(t)
+}
