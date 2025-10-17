@@ -152,10 +152,10 @@ func (s *transactionService) Update(ctx context.Context, transactionID string, p
 		input["amount"] = *params.Amount
 	}
 	if params.Merchant != nil {
-		input["merchant"] = *params.Merchant
+		input["name"] = *params.Merchant  // Field name is "name" not "merchant"
 	}
 	if params.CategoryID != nil {
-		input["categoryId"] = *params.CategoryID
+		input["category"] = *params.CategoryID  // Field name is "category" not "categoryId"
 	}
 	if params.Notes != nil {
 		input["notes"] = *params.Notes
