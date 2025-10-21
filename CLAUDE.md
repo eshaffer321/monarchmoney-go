@@ -272,6 +272,173 @@ mockTransport.On("Execute",
 - **GraphQL queries**: `internal/graphql/queries/`
 - **All interfaces**: `pkg/monarch/interfaces.go`
 
+## 📦 Release Process
+
+**⚠️ CRITICAL: You MUST create a new release whenever code changes are pushed to main.**
+
+This library is consumed as a versioned dependency from GitHub. Forgetting to create a release tag means users cannot access your changes.
+
+### When to Release
+
+Create a new release for:
+- ✅ **New features** (minor version bump: v1.0.0 → v1.1.0)
+- ✅ **Bug fixes** (patch version bump: v1.0.0 → v1.0.1)
+- ✅ **Breaking changes** (major version bump: v1.0.0 → v2.0.0)
+- ✅ **Documentation updates** that affect API usage
+- ✅ **ANY code changes** that consumers might need
+
+**❌ DO NOT** commit code changes to main without also creating a release tag.
+
+### Pre-Release Checklist
+
+Before creating a release, ensure:
+
+1. **All tests pass**:
+   ```bash
+   go test ./pkg/monarch/... -v
+   ```
+
+2. **Code builds successfully**:
+   ```bash
+   go build ./...
+   ```
+
+3. **CHANGELOG.md is updated** with:
+   - Version number and date in `## [X.Y.Z] - YYYY-MM-DD` format
+   - Changes organized by category (Added/Changed/Fixed/Removed/Security)
+   - Breaking changes clearly marked with ⚠️
+   - Link to release at the bottom
+
+4. **Version follows semantic versioning**:
+   - **Major** (v1.0.0 → v2.0.0): Breaking API changes
+   - **Minor** (v1.0.0 → v1.1.0): New features, backward compatible
+   - **Patch** (v1.0.0 → v1.0.1): Bug fixes, backward compatible
+
+### Release Steps
+
+```bash
+# 1. Update CHANGELOG.md
+# Edit CHANGELOG.md to add new version section with all changes
+# Move items from [Unreleased] to new [X.Y.Z] section
+
+# 2. Commit the changelog
+git add CHANGELOG.md
+git commit -m "docs: Update CHANGELOG for vX.Y.Z"
+
+# 3. Create annotated tag with detailed message
+git tag -a vX.Y.Z -m "Release vX.Y.Z - Brief description
+
+Added:
+- Feature 1
+- Feature 2
+
+Fixed:
+- Bug fix 1
+
+Breaking Changes:
+- None (or list them)
+"
+
+# 4. Push commit AND tag (tags are not pushed by default!)
+git push && git push origin vX.Y.Z
+
+# 5. Verify tag is visible on GitHub
+git ls-remote --tags origin
+# Should show: refs/tags/vX.Y.Z
+```
+
+### Example Release Message
+
+```
+Release v1.2.0 - Add transaction filtering and pagination
+
+Added:
+- Transaction filtering by date range
+- Pagination support for large transaction lists
+- New GetTransactionsByCategory method
+
+Fixed:
+- Authentication token refresh bug
+- Memory leak in streaming API
+
+Breaking Changes:
+- None
+```
+
+### After Releasing
+
+1. **Verify tag on GitHub**:
+   - Visit https://github.com/eshaffer321/monarchmoney-go/tags
+   - Confirm your tag appears
+
+2. **Test consuming the new version**:
+   ```bash
+   # In a test project
+   go get github.com/eshaffer321/monarchmoney-go@vX.Y.Z
+   go mod tidy
+   ```
+
+3. **Update dependent projects**:
+   - If you maintain projects using this library, update them
+   - Run `go get -u github.com/eshaffer321/monarchmoney-go@vX.Y.Z`
+
+### Emergency Hotfix Releases
+
+For critical bugs in production:
+
+1. Create hotfix branch from the tagged release:
+   ```bash
+   git checkout -b hotfix/vX.Y.Z vX.Y.Z
+   ```
+
+2. Fix the bug and commit
+
+3. Update CHANGELOG with patch version
+
+4. Create patch version tag:
+   ```bash
+   git tag -a vX.Y.Z+1 -m "Hotfix vX.Y.Z+1 - Critical bug fix"
+   git push origin hotfix/vX.Y.Z
+   git push origin vX.Y.Z+1
+   ```
+
+5. Merge hotfix back to main
+
+### Common Mistakes to Avoid
+
+- ❌ **Forgetting to push tags**: `git push` doesn't push tags by default
+  - ✅ Always use: `git push origin vX.Y.Z`
+
+- ❌ **Using wrong module path**: Module path in go.mod MUST match GitHub repo URL
+  - ✅ Should be: `module github.com/eshaffer321/monarchmoney-go`
+
+- ❌ **Skipping CHANGELOG updates**: Always document what changed
+  - ✅ Update CHANGELOG.md BEFORE creating tag
+
+- ❌ **Committing code without releasing**: Every code change needs a release
+  - ✅ Commit → Update CHANGELOG → Tag → Push both
+
+- ❌ **Using v2+ without /v2 in module path**: Go modules require suffix for major versions ≥2
+  - ✅ For v2.0.0+, module path must be: `github.com/eshaffer321/monarchmoney-go/v2`
+
+- ❌ **Creating lightweight tags**: Use annotated tags with `-a` flag
+  - ✅ Annotated tags include metadata and show up properly on GitHub
+
+### Versioning Strategy for This Project
+
+- **v1.x.x**: Current stable version, backward compatible improvements
+- **v2.x.x**: Only when breaking changes are absolutely necessary
+- **v0.x.x**: Pre-release versions (no longer used, we're at v1+)
+
+### Why This Matters
+
+Go modules use git tags for versioning. When someone runs:
+```bash
+go get github.com/eshaffer321/monarchmoney-go@v1.2.0
+```
+
+Go fetches the code at that exact tag. **Without a tag, users cannot access your changes.**
+
 ## 🚨 Before You Start Coding
 
 1. **Run the tests**: `go test ./pkg/monarch/... -v` (should all pass)
