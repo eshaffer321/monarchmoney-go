@@ -91,6 +91,12 @@ clean:
 	@echo "$(YELLOW)Cleaning build artifacts...$(NC)"
 	@rm -rf $(BINARY_DIR)
 	@rm -f $(COVERAGE_FILE) $(COVERAGE_HTML)
+	@rm -f coverage.txt
+	@rm -f mcp-monarch
+	@rm -f cmd/mcp-server/mcp-monarch
+	@rm -f test_*.go
+	@rm -f security-report.json
+	@find . -name "*.bak" -type f -delete
 	@echo "$(GREEN)Clean complete$(NC)"
 
 ## deps: Download dependencies
