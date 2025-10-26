@@ -584,3 +584,104 @@ func TestTransactionService_Update_CorrectFieldNames(t *testing.T) {
 	assert.Equal(t, "New Store", transaction.Merchant.Name)
 	mockTransport.AssertExpectations(t)
 }
+
+func TestTransactionService_Delete(t *testing.T) {
+	// Setup
+	mockTransport := new(MockTransport)
+	client := &Client{
+		transport:   mockTransport,
+		queryLoader: graphql.NewQueryLoader(),
+		options:     &ClientOptions{},
+		baseURL:     "https://api.test.com",
+	}
+	service := newTransactionService(client)
+
+	// Mock successful deletion response
+	mockResponse := `{
+		"deleteTransaction": {
+			"deleted": true,
+			"errors": []
+		}
+	}`
+
+	// Verify the mutation uses input wrapper (matching Python client format)
+	mockTransport.On("Execute",
+		mock.Anything,
+		mock.AnythingOfType("string"),
+		mock.MatchedBy(func(variables map[string]interface{}) bool {
+			// The Python client uses: {"input": {"transactionId": "..."}}
+			input, ok := variables["input"].(map[string]interface{})
+			if !ok {
+				t.Logf("ERROR: Expected 'input' wrapper, got variables: %v", variables)
+				return false
+			}
+
+			transactionID, ok := input["transactionId"].(string)
+			if !ok {
+				t.Logf("ERROR: Expected 'transactionId' field in input, got: %v", input)
+				return false
+			}
+
+			if transactionID != "txn-123" {
+				t.Logf("ERROR: Wrong transaction ID: %v", transactionID)
+				return false
+			}
+
+			t.Logf("SUCCESS: Correct mutation format with input wrapper")
+			return true
+		}),
+		mock.Anything,
+	).Return(mockResponse, nil)
+
+	// Execute
+	ctx := context.Background()
+	err := service.Delete(ctx, "txn-123")
+
+	// Assert
+	require.NoError(t, err)
+	mockTransport.AssertExpectations(t)
+}
+
+func TestTransactionService_Delete_Error(t *testing.T) {
+	// Setup
+	mockTransport := new(MockTransport)
+	client := &Client{
+		transport:   mockTransport,
+		queryLoader: graphql.NewQueryLoader(),
+		options:     &ClientOptions{},
+		baseURL:     "https://api.test.com",
+	}
+	service := newTransactionService(client)
+
+	// Mock error response (e.g., trying to delete bank-imported transaction)
+	mockResponse := `{
+		"deleteTransaction": {
+			"deleted": false,
+			"errors": [{
+				"code": "BAD_REQUEST",
+				"message": "Cannot delete bank-imported transactions"
+			}]
+		}
+	}`
+
+	mockTransport.On("Execute",
+		mock.Anything,
+		mock.AnythingOfType("string"),
+		mock.Anything,
+		mock.Anything,
+	).Return(mockResponse, nil)
+
+	// Execute
+	ctx := context.Background()
+	err := service.Delete(ctx, "txn-123")
+
+	// Assert - should return structured error with both code and message
+	require.Error(t, err)
+
+	var apiErr *Error
+	require.ErrorAs(t, err, &apiErr)
+	assert.Equal(t, "BAD_REQUEST", apiErr.Code)
+	assert.Equal(t, "Cannot delete bank-imported transactions", apiErr.Message)
+
+	mockTransport.AssertExpectations(t)
+}

@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- Fixed `Transactions.Delete()` method returning `BAD_REQUEST` error by updating GraphQL mutation format to match Python client and Monarch API expectations. The mutation now uses `DeleteTransactionMutationInput` with `transactionId` field wrapped in `input` parameter instead of passing UUID directly.
+
+### Added
+- Added comprehensive test coverage for `Transactions.Delete()` including error handling scenarios
+- Added example documentation for transaction deletion and `hideFromReports` workaround (`examples/transaction_deletion.go`)
+
+### Documentation
+- Documented `HideFromReports` field as an alternative to deletion for bank-imported transactions that cannot be deleted
+- Added detailed examples for consolidating multi-delivery orders (e.g., Walmart split deliveries)
+
 ## [1.0.0] - 2025-10-20
 
 ### Added
