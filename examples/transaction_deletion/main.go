@@ -32,7 +32,7 @@ func main() {
 	// ✅ Manually created transactions
 	// ❓ Bank-imported transactions (may still return BAD_REQUEST)
 
-	err := client.Transactions.Delete(ctx, transactionID)
+	err = client.Transactions.Delete(ctx, transactionID)
 	if err != nil {
 		// If deletion fails, check if it's a structured error
 		if apiErr, ok := err.(*monarch.Error); ok {
