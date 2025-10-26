@@ -11,7 +11,12 @@ import (
 // This example demonstrates transaction deletion and the hideFromReports workaround
 func main() {
 	// Initialize client
-	client := monarch.NewClient("your-session-token")
+	client, err := monarch.NewClient(&monarch.ClientOptions{
+		Token: "your-session-token",
+	})
+	if err != nil {
+		log.Fatalf("Failed to create client: %v", err)
+	}
 	ctx := context.Background()
 
 	// Example transaction ID
