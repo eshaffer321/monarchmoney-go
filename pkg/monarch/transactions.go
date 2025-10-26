@@ -199,8 +199,11 @@ func (s *transactionService) Update(ctx context.Context, transactionID string, p
 func (s *transactionService) Delete(ctx context.Context, transactionID string) error {
 	query := s.client.loadQuery("transactions/delete.graphql")
 
+	// Use input wrapper format to match Python client and Monarch API
 	variables := map[string]interface{}{
-		"id": transactionID,
+		"input": map[string]interface{}{
+			"transactionId": transactionID,
+		},
 	}
 
 	var result struct {
