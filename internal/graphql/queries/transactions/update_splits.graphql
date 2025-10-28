@@ -6,6 +6,7 @@ mutation Common_SplitTransactionMutation($input: UpdateTransactionSplitMutationI
     }
     transaction {
       id
+      amount
       hasSplitTransactions
       splitTransactions {
         id

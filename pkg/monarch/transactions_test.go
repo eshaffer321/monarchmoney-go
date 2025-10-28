@@ -685,3 +685,107 @@ func TestTransactionService_Delete_Error(t *testing.T) {
 
 	mockTransport.AssertExpectations(t)
 }
+
+// TestTransactionService_Update_AmountOnly tests updating a transaction's amount.
+// This reproduces the bug reported where Update() succeeds but the amount isn't actually updated.
+func TestTransactionService_Update_AmountOnly(t *testing.T) {
+	// Setup
+	mockTransport := new(MockTransport)
+	client := &Client{
+		transport:   mockTransport,
+		queryLoader: graphql.NewQueryLoader(),
+		options:     &ClientOptions{},
+		baseURL:     "https://api.test.com",
+	}
+	service := newTransactionService(client)
+
+	// Mock response showing the updated amount
+	mockResponse := `{
+		"updateTransaction": {
+			"transaction": {
+				"id": "225271673011145604",
+				"amount": -127.90,
+				"date": "2024-01-15T00:00:00Z",
+				"merchant": {
+					"id": "merch-456",
+					"name": "Test Store"
+				},
+				"category": {
+					"id": "cat-123",
+					"name": "Shopping"
+				},
+				"notes": "Multi-delivery order (3 charges: $6.56, $14.39, $106.95)",
+				"hideFromReports": false,
+				"needsReview": false
+			},
+			"errors": []
+		}
+	}`
+
+	// This matcher verifies that the amount field is correctly passed
+	mockTransport.On("Execute",
+		mock.Anything,
+		mock.AnythingOfType("string"),
+		mock.MatchedBy(func(variables map[string]interface{}) bool {
+			input, ok := variables["input"].(map[string]interface{})
+			if !ok {
+				t.Logf("ERROR: input is not a map: %T", variables["input"])
+				return false
+			}
+
+			// Verify transaction ID
+			if input["id"] != "225271673011145604" {
+				t.Logf("ERROR: Wrong transaction ID: %v", input["id"])
+				return false
+			}
+
+			// CRITICAL: Verify "amount" field is present and has the correct value
+			amountValue, hasAmountField := input["amount"]
+			if !hasAmountField {
+				t.Logf("ERROR: Missing 'amount' field. Found fields: %v", input)
+				return false
+			}
+
+			// Check the amount value (should be -127.90)
+			var actualAmount float64
+			switch v := amountValue.(type) {
+			case float64:
+				actualAmount = v
+			case float32:
+				actualAmount = float64(v)
+			case int:
+				actualAmount = float64(v)
+			default:
+				t.Logf("ERROR: Unexpected amount type: %T, value: %v", amountValue, amountValue)
+				return false
+			}
+
+			if actualAmount != -127.90 {
+				t.Logf("ERROR: Wrong amount value: %v (expected -127.90)", actualAmount)
+				return false
+			}
+
+			t.Logf("SUCCESS: Amount field is correctly included: %v", input)
+			return true
+		}),
+		mock.Anything,
+	).Return(mockResponse, nil)
+
+	// Execute - update only the amount
+	ctx := context.Background()
+	amount := -127.90
+	notes := "Multi-delivery order (3 charges: $6.56, $14.39, $106.95)"
+
+	transaction, err := service.Update(ctx, "225271673011145604", &UpdateTransactionParams{
+		Amount: &amount,
+		Notes:  &notes,
+	})
+
+	// Assert
+	require.NoError(t, err)
+	assert.NotNil(t, transaction)
+	assert.Equal(t, "225271673011145604", transaction.ID)
+	assert.Equal(t, -127.90, transaction.Amount, "Amount should be updated to -127.90")
+	assert.Equal(t, "Multi-delivery order (3 charges: $6.56, $14.39, $106.95)", transaction.Notes)
+	mockTransport.AssertExpectations(t)
+}

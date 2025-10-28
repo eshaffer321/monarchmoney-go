@@ -1,5 +1,5 @@
-query GetTransactionDetails($id: UUID!) {
-  getTransaction(id: $id) {
+query GetTransactionDetails($id: UUID!, $redirectPosted: Boolean) {
+  getTransaction(id: $id, redirectPosted: $redirectPosted) {
     id
     amount
     pending
@@ -8,41 +8,46 @@ query GetTransactionDetails($id: UUID!) {
     plaidName
     notes
     isRecurring
-    reviewStatus
     needsReview
+    hasSplitTransactions
     isSplitTransaction
-    createdAt
-    updatedAt
-    originalDescription
     category {
       id
       name
+      __typename
     }
     merchant {
-      name
       id
+      name
+      __typename
     }
     account {
       id
       displayName
+      __typename
     }
     tags {
       id
       name
       color
+      __typename
     }
-    splits {
+    splitTransactions {
       id
       amount
       notes
       merchant {
         id
         name
+        __typename
       }
       category {
         id
         name
+        __typename
       }
+      __typename
     }
+    __typename
   }
 }

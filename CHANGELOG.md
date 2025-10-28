@@ -7,6 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.0.2] - 2025-10-26
+
+### Fixed
+- **CRITICAL**: Fixed `Transactions.Get()` method failing with `BAD_REQUEST` error by:
+  - Adding required `redirectPosted` parameter to GraphQL query (defaults to `true` matching Python client behavior)
+  - Correcting field name from `splits` to `splitTransactions` in query response
+  - Removing invalid fields (`reviewStatus`, `createdAt`, `updatedAt`, `originalDescription`) that don't exist in Monarch API
+  - Adding `hasSplitTransactions` field to properly detect split transactions
+  - Adding `__typename` fields following GraphQL best practices
+- Enhanced `UpdateSplits()` mutation response to include parent transaction `amount` field for verification
+
+### Notes
+- `Transactions.Update()` was working correctly all along - the issue was that `Get()` couldn't fetch transactions to verify updates
+- All tests pass with updated GraphQL schema
+
 ## [1.0.1] - 2025-10-25
 
 ### Fixed

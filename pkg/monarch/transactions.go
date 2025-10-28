@@ -40,7 +40,8 @@ func (s *transactionService) Get(ctx context.Context, transactionID string) (*Tr
 	query := s.client.loadQuery("transactions/get.graphql")
 
 	variables := map[string]interface{}{
-		"id": transactionID,
+		"id":             transactionID,
+		"redirectPosted": true, // Default to true as per Python client
 	}
 
 	var result struct {
@@ -318,8 +319,9 @@ func (s *transactionService) UpdateSplits(ctx context.Context, transactionID str
 	var result struct {
 		UpdateTransactionSplit struct {
 			Transaction *struct {
-				ID                   string `json:"id"`
-				HasSplitTransactions bool   `json:"hasSplitTransactions"`
+				ID                   string              `json:"id"`
+				Amount               float64             `json:"amount"`
+				HasSplitTransactions bool                `json:"hasSplitTransactions"`
 				SplitTransactions    []*TransactionSplit `json:"splitTransactions"`
 			} `json:"transaction"`
 			Errors json.RawMessage `json:"errors"`
