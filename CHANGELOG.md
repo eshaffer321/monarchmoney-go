@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.0.3] - 2025-11-26
+
+### Fixed
+- Removed unsupported `WithMerchant()` filter from transaction queries to prevent `400 BAD_REQUEST` errors
+  - The MonarchMoney GraphQL API does not support filtering by merchant name via `TransactionFilterInput`
+  - Users should use `Search()` method instead, which searches across merchant names and other text fields
+  - Aligns Go client with Python reference implementation
+
+### Breaking Changes
+- ⚠️ Removed `WithMerchant()` method from `TransactionQueryBuilder` interface
+  - Migration: Replace `.WithMerchant("name")` with `.Search("name")`
+  - The `Search()` method provides equivalent functionality
+
 ## [1.0.2] - 2025-10-26
 
 ### Fixed
@@ -86,6 +99,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 All development work leading up to the v1.0.0 release.
 
-[Unreleased]: https://github.com/eshaffer321/monarchmoney-go/compare/v1.0.1...HEAD
+[Unreleased]: https://github.com/eshaffer321/monarchmoney-go/compare/v1.0.3...HEAD
+[1.0.3]: https://github.com/eshaffer321/monarchmoney-go/compare/v1.0.2...v1.0.3
+[1.0.2]: https://github.com/eshaffer321/monarchmoney-go/compare/v1.0.1...v1.0.2
 [1.0.1]: https://github.com/eshaffer321/monarchmoney-go/compare/v1.0.0...v1.0.1
 [1.0.0]: https://github.com/eshaffer321/monarchmoney-go/releases/tag/v1.0.0
