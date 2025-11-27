@@ -457,13 +457,8 @@ func (b *transactionQueryBuilder) WithMaxAmount(amount float64) TransactionQuery
 	return b
 }
 
-// WithMerchant filters by merchant name
-func (b *transactionQueryBuilder) WithMerchant(merchant string) TransactionQueryBuilder {
-	b.filters["merchant"] = merchant
-	return b
-}
-
 // Search sets search filter
+// Note: The search parameter can be used to search for merchants, transaction names, and other text fields
 func (b *transactionQueryBuilder) Search(query string) TransactionQueryBuilder {
 	b.filters["search"] = query
 	return b
