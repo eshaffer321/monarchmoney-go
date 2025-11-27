@@ -110,7 +110,6 @@ type TransactionQueryBuilder interface {
 	WithTags(tagIDs ...string) TransactionQueryBuilder
 	WithMinAmount(amount float64) TransactionQueryBuilder
 	WithMaxAmount(amount float64) TransactionQueryBuilder
-	WithMerchant(merchant string) TransactionQueryBuilder
 	Search(query string) TransactionQueryBuilder
 	Limit(limit int) TransactionQueryBuilder
 	Offset(offset int) TransactionQueryBuilder
