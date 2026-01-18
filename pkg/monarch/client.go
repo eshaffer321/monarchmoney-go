@@ -14,7 +14,7 @@ import (
 
 const (
 	// DefaultBaseURL is the default Monarch Money API base URL
-	DefaultBaseURL = "https://api.monarchmoney.com"
+	DefaultBaseURL = "https://api.monarch.com"
 
 	// DefaultTimeout is the default HTTP client timeout
 	DefaultTimeout = 30 * time.Second
