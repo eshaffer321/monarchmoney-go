@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.0.4] - 2026-01-17
+
+### Improved
+- Enhanced 5xx server error messages with human-readable status code descriptions
+  - Error messages now include descriptions like "SSL Handshake Failed" for 525 errors
+  - Common Cloudflare error codes (520-530) are now explained in error messages
+  - JSON error responses from the server are now included in 5xx error messages
+  - Example: `server error: 525` is now `server error: 525 (SSL Handshake Failed)`
+- Added comprehensive tests for HTTP error handling
+
+### Added
+- New `httpStatusDescription()` helper function for translating HTTP status codes to descriptions
+- Test coverage for transport layer error handling
+
 ## [1.0.3] - 2025-11-26
 
 ### Fixed
@@ -99,7 +113,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 All development work leading up to the v1.0.0 release.
 
-[Unreleased]: https://github.com/eshaffer321/monarchmoney-go/compare/v1.0.3...HEAD
+[Unreleased]: https://github.com/eshaffer321/monarchmoney-go/compare/v1.0.4...HEAD
+[1.0.4]: https://github.com/eshaffer321/monarchmoney-go/compare/v1.0.3...v1.0.4
 [1.0.3]: https://github.com/eshaffer321/monarchmoney-go/compare/v1.0.2...v1.0.3
 [1.0.2]: https://github.com/eshaffer321/monarchmoney-go/compare/v1.0.1...v1.0.2
 [1.0.1]: https://github.com/eshaffer321/monarchmoney-go/compare/v1.0.0...v1.0.1

@@ -275,9 +275,26 @@ func (t *GraphQLTransport) handleHTTPError(statusCode int, body []byte) error {
 		}
 	default:
 		if statusCode >= 500 {
+			// Build informative error message for server errors
+			msg := errResp.Message
+			if msg == "" {
+				msg = errResp.Error
+			}
+
+			// Create base message with status code and description
+			baseMsg := fmt.Sprintf("server error: %d", statusCode)
+			if desc := httpStatusDescription(statusCode); desc != "" {
+				baseMsg = fmt.Sprintf("server error: %d (%s)", statusCode, desc)
+			}
+
+			// Append parsed error message if available
+			if msg != "" {
+				baseMsg = fmt.Sprintf("%s: %s", baseMsg, msg)
+			}
+
 			return &types.Error{
 				Code:       "SERVER_ERROR",
-				Message:    fmt.Sprintf("server error: %d", statusCode),
+				Message:    baseMsg,
 				StatusCode: statusCode,
 				Err:        types.ErrServerError,
 			}
@@ -288,6 +305,28 @@ func (t *GraphQLTransport) handleHTTPError(statusCode int, body []byte) error {
 			StatusCode: statusCode,
 		}
 	}
+}
+
+// httpStatusDescription returns a human-readable description for common HTTP status codes.
+// This helps users understand errors like 525 (SSL Handshake Failed) which are Cloudflare-specific.
+func httpStatusDescription(statusCode int) string {
+	descriptions := map[int]string{
+		500: "Internal Server Error",
+		501: "Not Implemented",
+		502: "Bad Gateway",
+		503: "Service Unavailable",
+		504: "Gateway Timeout",
+		520: "Web Server Error",
+		521: "Web Server Is Down",
+		522: "Connection Timed Out",
+		523: "Origin Is Unreachable",
+		524: "A Timeout Occurred",
+		525: "SSL Handshake Failed",
+		526: "Invalid SSL Certificate",
+		527: "Railgun Error",
+		530: "Origin DNS Error",
+	}
+	return descriptions[statusCode]
 }
 
 // truncateQuery truncates long queries for logging
