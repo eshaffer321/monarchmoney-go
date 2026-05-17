@@ -37,6 +37,21 @@ type AccountService interface {
 	// GetHoldings retrieves investment holdings for an account
 	GetHoldings(ctx context.Context, accountID string) ([]*Holding, error)
 
+	// SearchSecurities searches for securities by ticker or name
+	SearchSecurities(ctx context.Context, query string) ([]*Security, error)
+
+	// CreateHolding creates a manual investment holding
+	CreateHolding(ctx context.Context, params *CreateHoldingParams) (*Holding, error)
+
+	// CreateHoldingByTicker looks up a security by ticker and creates a holding
+	CreateHoldingByTicker(ctx context.Context, accountID, ticker string, quantity float64) (*Holding, error)
+
+	// DeleteHolding deletes a manual investment holding
+	DeleteHolding(ctx context.Context, holdingID string) error
+
+	// UpdateHoldingQuantity updates a holding's quantity (delete + recreate)
+	UpdateHoldingQuantity(ctx context.Context, accountID, holdingID string, newQuantity float64) (*Holding, error)
+
 	// Refresh triggers a refresh for specified accounts
 	Refresh(ctx context.Context, accountIDs ...string) (RefreshJob, error)
 

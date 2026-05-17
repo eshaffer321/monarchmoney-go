@@ -1,0 +1,12 @@
+query SecuritySearch($search: String!, $limit: Int, $orderByPopularity: Boolean) {
+  securities(
+    search: $search
+    limit: $limit
+    orderByPopularity: $orderByPopularity
+  ) {
+    id
+    name
+    ticker
+    currentPrice
+  }
+}
