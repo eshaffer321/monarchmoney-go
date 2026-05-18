@@ -94,6 +94,59 @@ func (s *accountService) Create(ctx context.Context, params *CreateAccountParams
 	return s.Get(ctx, result.CreateManualAccount.Account.ID)
 }
 
+// CreateInvestmentsAccount creates a manual investments account with initial holdings.
+// Uses the Common_CreateManualInvestmentsAccount mutation which creates the account
+// and adds holdings in a single call.
+func (s *accountService) CreateInvestmentsAccount(ctx context.Context, params *CreateInvestmentsAccountParams) (*Account, error) {
+	query := s.client.loadQuery("accounts/create_investments_account.graphql")
+
+	holdings := make([]map[string]interface{}, len(params.InitialHoldings))
+	for i, h := range params.InitialHoldings {
+		holdings[i] = map[string]interface{}{
+			"securityId": h.SecurityID,
+			"quantity":   h.Quantity,
+		}
+	}
+
+	variables := map[string]interface{}{
+		"input": map[string]interface{}{
+			"name":                            params.Name,
+			"subtype":                         params.Subtype,
+			"manualInvestmentsTrackingMethod": params.ManualInvestmentsTrackingMethod,
+			"initialHoldings":                 holdings,
+		},
+	}
+
+	var result struct {
+		CreateManualInvestmentsAccount struct {
+			Account *struct {
+				ID string `json:"id"`
+			} `json:"account"`
+			Errors []struct {
+				Message string `json:"message"`
+				Code    string `json:"code"`
+			} `json:"errors"`
+		} `json:"createManualInvestmentsAccount"`
+	}
+
+	if err := s.client.executeGraphQL(ctx, query, variables, &result); err != nil {
+		return nil, errors.Wrap(err, "failed to create investments account")
+	}
+
+	if len(result.CreateManualInvestmentsAccount.Errors) > 0 {
+		return nil, &Error{
+			Code:    result.CreateManualInvestmentsAccount.Errors[0].Code,
+			Message: result.CreateManualInvestmentsAccount.Errors[0].Message,
+		}
+	}
+
+	if result.CreateManualInvestmentsAccount.Account == nil {
+		return nil, errors.New("no account returned from creation")
+	}
+
+	return s.Get(ctx, result.CreateManualInvestmentsAccount.Account.ID)
+}
+
 // Update updates an existing account
 func (s *accountService) Update(ctx context.Context, accountID string, params *UpdateAccountParams) (*Account, error) {
 	query := s.client.loadQuery("accounts/update.graphql")

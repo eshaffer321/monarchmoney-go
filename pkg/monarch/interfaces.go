@@ -40,6 +40,9 @@ type AccountService interface {
 	// SearchSecurities searches for securities by ticker or name
 	SearchSecurities(ctx context.Context, query string) ([]*Security, error)
 
+	// CreateInvestmentsAccount creates a manual investments account with initial holdings
+	CreateInvestmentsAccount(ctx context.Context, params *CreateInvestmentsAccountParams) (*Account, error)
+
 	// CreateHolding creates a manual investment holding
 	CreateHolding(ctx context.Context, params *CreateHoldingParams) (*Holding, error)
 
