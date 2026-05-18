@@ -67,15 +67,11 @@ func (s *transactionService) Create(ctx context.Context, params *CreateTransacti
 	// Round amount to 2 decimal places as Monarch expects
 	roundedAmount := math.Round(params.Amount*100) / 100
 
-	// Always send all fields — Monarch requires them even when null/empty
+	// Send only required fields — optional fields added below if present
 	input := map[string]interface{}{
-		"date":                params.Date.Format("2006-01-02"),
-		"accountId":          params.AccountID,
-		"amount":             roundedAmount,
-		"merchantName":       "",
-		"categoryId":         nil,
-		"notes":              params.Notes,
-		"shouldUpdateBalance": true,
+		"date":      params.Date.Format("2006-01-02"),
+		"accountId": params.AccountID,
+		"amount":    roundedAmount,
 	}
 
 	if params.Merchant != nil && params.Merchant.Name != "" {
@@ -84,6 +80,10 @@ func (s *transactionService) Create(ctx context.Context, params *CreateTransacti
 
 	if params.CategoryID != "" {
 		input["categoryId"] = params.CategoryID
+	}
+
+	if params.Notes != "" {
+		input["notes"] = params.Notes
 	}
 
 	variables := map[string]interface{}{
