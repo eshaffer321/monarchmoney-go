@@ -69,9 +69,9 @@ func (s *transactionService) Create(ctx context.Context, params *CreateTransacti
 		"amount":    params.Amount,
 	}
 
-	// Monarch expects merchant as a name string, not a struct
+	// Monarch expects "merchantName" (string), not "merchant"
 	if params.Merchant != nil && params.Merchant.Name != "" {
-		input["merchant"] = params.Merchant.Name
+		input["merchantName"] = params.Merchant.Name
 	}
 
 	if params.CategoryID != "" {
