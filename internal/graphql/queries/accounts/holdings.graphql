@@ -1,4 +1,4 @@
-query GetAccountHoldings($accountId: UUID!) {
+query GetAccountHoldings($accountId: ID!) {
   account(id: $accountId) {
     id
     holdings {
