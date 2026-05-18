@@ -13,7 +13,7 @@ const (
 	DefaultTimeout = 30 * time.Second
 
 	// UserAgent is the user agent string
-	UserAgent = "monarchmoney-go/1.0.0"
+	UserAgent = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/136.0.0.0 Safari/537.36"
 )
 
 // Common errors

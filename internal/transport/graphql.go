@@ -79,11 +79,14 @@ func NewGraphQLTransport(opts *Options) *GraphQLTransport {
 
 	// Set default headers
 	headers := map[string]string{
-		"Accept":          contentType,
-		"Content-Type":    contentType,
-		"Client-Platform": "web",
-		"User-Agent":      types.UserAgent,
-		"Origin":          "https://app.monarchmoney.com",
+		"Accept":                contentType,
+		"Content-Type":         contentType,
+		"Client-Platform":      "web",
+		"User-Agent":           types.UserAgent,
+		"Origin":               "https://app.monarch.com",
+		"Referer":              "https://app.monarch.com/",
+		"x-cio-client-platform": "web",
+		"x-cio-site-id":        "2598be4aa410159198b2",
 	}
 
 	// Merge custom headers
