@@ -64,11 +64,18 @@ func (s *transactionService) Create(ctx context.Context, params *CreateTransacti
 	query := s.client.loadQuery("transactions/create.graphql")
 
 	input := map[string]interface{}{
-		"date":       params.Date.Format("2006-01-02"),
-		"accountId":  params.AccountID,
-		"amount":     params.Amount,
-		"merchant":   params.Merchant,
-		"categoryId": params.CategoryID,
+		"date":      params.Date.Format("2006-01-02"),
+		"accountId": params.AccountID,
+		"amount":    params.Amount,
+	}
+
+	// Monarch expects merchant as a name string, not a struct
+	if params.Merchant != nil && params.Merchant.Name != "" {
+		input["merchant"] = params.Merchant.Name
+	}
+
+	if params.CategoryID != "" {
+		input["categoryId"] = params.CategoryID
 	}
 
 	if params.Notes != "" {
