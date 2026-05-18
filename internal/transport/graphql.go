@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/eshaffer321/monarchmoney-go/internal/types"
@@ -36,8 +37,9 @@ type GraphQLTransport struct {
 
 // GraphQLRequest represents a GraphQL request
 type GraphQLRequest struct {
-	Query     string                 `json:"query"`
-	Variables map[string]interface{} `json:"variables,omitempty"`
+	Query         string                 `json:"query"`
+	Variables     map[string]interface{} `json:"variables,omitempty"`
+	OperationName string                 `json:"operationName,omitempty"`
 }
 
 // GraphQLResponse represents a GraphQL response
@@ -116,10 +118,22 @@ func (t *GraphQLTransport) Execute(ctx context.Context, query string, variables 
 		return types.ErrSessionExpired
 	}
 
-	// Create request
+	// Create request — include operationName for servers that require it
+	opName := ""
+	for _, prefix := range []string{"mutation ", "query ", "subscription "} {
+		if idx := strings.Index(query, prefix); idx >= 0 {
+			rest := query[idx+len(prefix):]
+			if end := strings.IndexAny(rest, "( {"); end > 0 {
+				opName = rest[:end]
+			}
+			break
+		}
+	}
+
 	req := &GraphQLRequest{
-		Query:     query,
-		Variables: variables,
+		Query:         query,
+		Variables:     variables,
+		OperationName: opName,
 	}
 
 	// Marshal request
