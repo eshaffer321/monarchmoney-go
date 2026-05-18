@@ -204,6 +204,9 @@ type AuthService interface {
 	// LoginWithMFA performs login with MFA
 	LoginWithMFA(ctx context.Context, email, password, mfaCode string) error
 
+	// LoginWithEmailOTP performs login with email OTP code
+	LoginWithEmailOTP(ctx context.Context, email, password, otpCode string) error
+
 	// LoginWithTOTP performs login with TOTP secret
 	LoginWithTOTP(ctx context.Context, email, password, totpSecret string) error
 
