@@ -1,11 +1,24 @@
-mutation CreateTransaction($input: CreateTransactionMutationInput!) {
+mutation Common_CreateTransactionMutation($input: CreateTransactionMutationInput!) {
   createTransaction(input: $input) {
+    errors {
+      ...PayloadErrorFields
+      __typename
+    }
     transaction {
       id
+      __typename
     }
-    errors {
-      message
-      code
-    }
+    __typename
   }
+}
+
+fragment PayloadErrorFields on PayloadError {
+  fieldErrors {
+    field
+    messages
+    __typename
+  }
+  message
+  code
+  __typename
 }
