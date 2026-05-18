@@ -25,7 +25,7 @@ import (
 const (
 	loginEndpoint = "/auth/login/"
 	mfaEndpoint   = "/auth/login/mfa/"
-	userAgent     = "monarchmoney-go/1.0.0"
+	userAgent     = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/136.0.0.0 Safari/537.36"
 )
 
 // Service handles authentication operations
@@ -40,12 +40,16 @@ type Service struct {
 // NewService creates a new auth service
 func NewService(baseURL string, httpClient *http.Client, logger types.Logger) *Service {
 	headers := map[string]string{
-		"Accept":          "application/json",
-		"Content-Type":    "application/json",
-		"Client-Platform": "web",
-		"User-Agent":      userAgent,
-		"Origin":          "https://app.monarchmoney.com",
-		"device-uuid":     uuid.New().String(),
+		"Accept":                 "application/json",
+		"Content-Type":           "application/json",
+		"Client-Platform":        "web",
+		"User-Agent":             userAgent,
+		"Origin":                 "https://app.monarch.com",
+		"Referer":                "https://app.monarch.com/",
+		"device-uuid":            uuid.New().String(),
+		"x-cio-client-platform":  "web",
+		"x-cio-site-id":          "2598be4aa410159198b2",
+		"x-gist-user-anonymous":  "false",
 	}
 
 	return &Service{
