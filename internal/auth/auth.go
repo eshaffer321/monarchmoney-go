@@ -93,9 +93,9 @@ func (s *Service) LoginWithTOTP(ctx context.Context, email, password, totpSecret
 
 // LoginWithEmailOTP performs login with email OTP code.
 // NOTE: The initial login must have already been attempted (which triggers the OTP email).
-// Re-submits login with the OTP code in the totp field — Monarch uses the same field for both.
+// Re-submits login with the OTP code in the email_otp field.
 func (s *Service) LoginWithEmailOTP(ctx context.Context, email, password, otpCode string) error {
-	return s.login(ctx, email, password, otpCode)
+	return s.loginWithEmailOTP(ctx, email, password, otpCode)
 }
 
 // LoginInteractive performs interactive login with prompts for MFA/OTP when needed
@@ -123,8 +123,8 @@ func (s *Service) LoginInteractive(ctx context.Context, email, password string) 
 		// Trim whitespace and newline
 		otpCode = strings.TrimSpace(otpCode)
 
-		// Submit OTP code via login with totp field
-		return s.login(ctx, email, password, otpCode)
+		// Submit OTP code via email_otp field
+		return s.loginWithEmailOTP(ctx, email, password, otpCode)
 
 	} else if err.Error() == "MFA required" {
 		// Prompt for MFA code
@@ -329,6 +329,88 @@ func (s *Service) login(ctx context.Context, email, password, mfaCode string) er
 
 	if s.logger != nil {
 		s.logger.Info("Login successful", "email", email)
+	}
+
+	return nil
+}
+
+// loginWithEmailOTP submits login with the email_otp field for email-based verification.
+func (s *Service) loginWithEmailOTP(ctx context.Context, email, password, code string) error {
+	reqBody := map[string]interface{}{
+		"username":       email,
+		"password":       password,
+		"email_otp":      code,
+		"trusted_device": true,
+		"supports_mfa":   true,
+	}
+
+	body, err := json.Marshal(reqBody)
+	if err != nil {
+		return errors.Wrap(err, "failed to marshal email OTP request")
+	}
+
+	req, err := http.NewRequestWithContext(ctx, "POST", s.baseURL+loginEndpoint, bytes.NewReader(body))
+	if err != nil {
+		return errors.Wrap(err, "failed to create email OTP request")
+	}
+
+	for k, v := range s.headers {
+		req.Header.Set(k, v)
+	}
+
+	if s.logger != nil {
+		s.logger.Debug("Email OTP login request", "email", email)
+	}
+
+	resp, err := s.httpClient.Do(req)
+	if err != nil {
+		return errors.Wrap(err, "email OTP request failed")
+	}
+	defer resp.Body.Close()
+
+	respBody, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return errors.Wrap(err, "failed to read email OTP response")
+	}
+
+	if s.logger != nil {
+		s.logger.Debug("Email OTP response", "status", resp.StatusCode)
+	}
+
+	var loginResp loginResponse
+	if err := json.Unmarshal(respBody, &loginResp); err != nil {
+		return errors.Wrap(err, "failed to parse email OTP response")
+	}
+
+	if loginResp.ErrorCode != "" {
+		return &types.Error{
+			Code:    loginResp.ErrorCode,
+			Message: loginResp.Message,
+		}
+	}
+
+	if resp.StatusCode != http.StatusOK {
+		return &types.Error{
+			Code:       "EMAIL_OTP_FAILED",
+			Message:    fmt.Sprintf("Email OTP failed with status %d", resp.StatusCode),
+			StatusCode: resp.StatusCode,
+		}
+	}
+
+	if loginResp.Token == "" {
+		return errors.New("no token in email OTP response")
+	}
+
+	s.session = &types.Session{
+		Token:      loginResp.Token,
+		UserID:     loginResp.UserID,
+		Email:      email,
+		ExpiresAt:  time.Now().Add(24 * time.Hour),
+		DeviceUUID: s.headers["device-uuid"],
+	}
+
+	if s.logger != nil {
+		s.logger.Info("Email OTP login successful", "email", email)
 	}
 
 	return nil
