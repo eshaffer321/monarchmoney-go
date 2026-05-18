@@ -271,6 +271,13 @@ func (t *GraphQLTransport) handleHTTPError(statusCode int, body []byte) error {
 		if msg == "" {
 			msg = errResp.Error
 		}
+		if msg == "" {
+			// Include raw body for debugging when no structured error found
+			msg = string(body)
+			if len(msg) > 500 {
+				msg = msg[:500]
+			}
+		}
 		return &types.Error{
 			Code:       "BAD_REQUEST",
 			Message:    msg,
