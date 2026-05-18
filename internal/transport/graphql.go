@@ -173,11 +173,6 @@ func (t *GraphQLTransport) Execute(ctx context.Context, query string, variables 
 		t.logger.Debug("GraphQL request", "query", truncateQuery(query), "variables", variables)
 	}
 
-	// Temporary: log full request body for debugging mutations
-	if len(body) < 2000 {
-		fmt.Printf("DEBUG graphql request body: %s\n", string(body))
-	}
-
 	// Execute request
 	start := time.Now()
 	resp, err := t.doRequest(httpReq)
