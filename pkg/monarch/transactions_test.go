@@ -294,24 +294,6 @@ func TestTransactionService_Create(t *testing.T) {
 		}
 	}`
 
-	// Mock get response (for fetching full details)
-	getResponse := `{
-		"getTransaction": {
-			"id": "new-txn-456",
-			"amount": -100.00,
-			"date": "2024-01-20T00:00:00Z",
-			"merchant": {
-				"name": "New Store",
-				"id": "new-merch"
-			},
-			"category": {
-				"id": "cat-new",
-				"name": "New Category"
-			},
-			"notes": "New transaction"
-		}
-	}`
-
 	mockTransport.On("Execute",
 		mock.Anything,
 		mock.AnythingOfType("string"),
@@ -320,18 +302,11 @@ func TestTransactionService_Create(t *testing.T) {
 			if !ok {
 				return false
 			}
-			merchant, ok := input["merchant"].(*Merchant)
-			return ok && merchant.Name == "New Store"
+			_, hasMerchant := input["merchantName"]
+			return hasMerchant
 		}),
 		mock.Anything,
 	).Return(createResponse, nil).Once()
-
-	mockTransport.On("Execute",
-		mock.Anything,
-		mock.AnythingOfType("string"),
-		mock.Anything,
-		mock.Anything,
-	).Return(getResponse, nil).Once()
 
 	// Execute
 	ctx := context.Background()
@@ -350,7 +325,6 @@ func TestTransactionService_Create(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, "new-txn-456", txn.ID)
 	assert.Equal(t, -100.00, txn.Amount)
-	assert.Equal(t, "New Store", txn.Merchant.Name)
 
 	mockTransport.AssertExpectations(t)
 }

@@ -137,32 +137,10 @@ func (s *transactionService) Create(ctx context.Context, params *CreateTransacti
 		return nil, errors.New("no transaction returned from creation")
 	}
 
-	// Fetch the full transaction details
-	details, err := s.Get(ctx, result.CreateTransaction.Transaction.ID)
-	if err != nil {
-		return nil, err
-	}
-
-	// Convert details to transaction
 	return &Transaction{
-		ID:                 details.ID,
-		Date:               details.Date,
-		Amount:             details.Amount,
-		Pending:            details.Pending,
-		HideFromReports:    details.HideFromReports,
-		PlaidName:          details.PlaidName,
-		Merchant:           details.Merchant,
-		Notes:              details.Notes,
-		HasSplits:          details.HasSplits,
-		IsSplitTransaction: details.IsSplitTransaction,
-		IsRecurring:        details.IsRecurring,
-		NeedsReview:        details.NeedsReview,
-		ReviewedAt:         details.ReviewedAt,
-		CreatedAt:          details.CreatedAt,
-		UpdatedAt:          details.UpdatedAt,
-		Account:            details.Account,
-		Category:           details.Category,
-		Tags:               details.Tags,
+		ID:     result.CreateTransaction.Transaction.ID,
+		Date:   params.Date,
+		Amount: roundedAmount,
 	}, nil
 }
 
