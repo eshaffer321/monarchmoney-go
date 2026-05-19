@@ -21,6 +21,7 @@ func newAuthService(client *Client) *authService {
 			client.baseURL,
 			client.httpClient,
 			client.options.Logger,
+			client.options.UserAgent,
 		),
 	}
 }

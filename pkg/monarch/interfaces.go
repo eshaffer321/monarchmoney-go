@@ -37,8 +37,9 @@ type AccountService interface {
 	// GetHoldings retrieves investment holdings for an account
 	GetHoldings(ctx context.Context, accountID string) ([]*Holding, error)
 
-	// SearchSecurities searches for securities by ticker or name
-	SearchSecurities(ctx context.Context, query string) ([]*Security, error)
+	// SearchSecurities searches for securities by ticker or name.
+	// The limit parameter controls the maximum number of results.
+	SearchSecurities(ctx context.Context, query string, limit int) ([]*Security, error)
 
 	// CreateInvestmentsAccount creates a manual investments account with initial holdings
 	CreateInvestmentsAccount(ctx context.Context, params *CreateInvestmentsAccountParams) (*Account, error)

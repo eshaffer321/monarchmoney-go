@@ -23,12 +23,16 @@ type CreateHoldingParams struct {
 }
 
 // SearchSecurities searches for securities by ticker or name.
-func (s *accountService) SearchSecurities(ctx context.Context, query string) ([]*Security, error) {
+// The limit parameter controls the maximum number of results returned.
+func (s *accountService) SearchSecurities(ctx context.Context, query string, limit int) ([]*Security, error) {
+	if limit <= 0 {
+		limit = 10
+	}
 	gql := s.client.loadQuery("accounts/search_securities.graphql")
 
 	variables := map[string]interface{}{
 		"search":            query,
-		"limit":             5,
+		"limit":             limit,
 		"orderByPopularity": true,
 	}
 
@@ -93,7 +97,7 @@ func (s *accountService) CreateHolding(ctx context.Context, params *CreateHoldin
 
 // CreateHoldingByTicker looks up a security by ticker and creates a holding.
 func (s *accountService) CreateHoldingByTicker(ctx context.Context, accountID, ticker string, quantity float64) (*Holding, error) {
-	securities, err := s.SearchSecurities(ctx, ticker)
+	securities, err := s.SearchSecurities(ctx, ticker, 5)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to search for ticker")
 	}

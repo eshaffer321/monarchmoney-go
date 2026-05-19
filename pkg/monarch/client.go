@@ -63,6 +63,9 @@ type ClientOptions struct {
 	// SessionFile path for session persistence
 	SessionFile string
 
+	// UserAgent overrides the default user-agent string for auth requests
+	UserAgent string
+
 	// Logger for debug logging
 	Logger Logger
 

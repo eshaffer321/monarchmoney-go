@@ -23,9 +23,9 @@ import (
 )
 
 const (
-	loginEndpoint = "/auth/login/"
-	mfaEndpoint   = "/auth/login/mfa/"
-	userAgent     = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/136.0.0.0 Safari/537.36"
+	loginEndpoint   = "/auth/login/"
+	mfaEndpoint     = "/auth/login/mfa/"
+	defaultUserAgent = "monarchmoney-go/1.0.0"
 )
 
 // Service handles authentication operations
@@ -37,19 +37,20 @@ type Service struct {
 	logger     types.Logger
 }
 
-// NewService creates a new auth service
-func NewService(baseURL string, httpClient *http.Client, logger types.Logger) *Service {
+// NewService creates a new auth service. An optional userAgent can be provided;
+// if empty, the default library user-agent is used.
+func NewService(baseURL string, httpClient *http.Client, logger types.Logger, userAgent string) *Service {
+	if userAgent == "" {
+		userAgent = defaultUserAgent
+	}
 	headers := map[string]string{
-		"Accept":                 "application/json",
-		"Content-Type":           "application/json",
-		"Client-Platform":        "web",
-		"User-Agent":             userAgent,
-		"Origin":                 "https://app.monarch.com",
-		"Referer":                "https://app.monarch.com/",
-		"device-uuid":            uuid.New().String(),
-		"x-cio-client-platform":  "web",
-		"x-cio-site-id":          "2598be4aa410159198b2",
-		"x-gist-user-anonymous":  "false",
+		"Accept":          "application/json",
+		"Content-Type":    "application/json",
+		"Client-Platform": "web",
+		"User-Agent":      userAgent,
+		"Origin":          "https://app.monarch.com",
+		"Referer":         "https://app.monarch.com/",
+		"device-uuid":     uuid.New().String(),
 	}
 
 	return &Service{

@@ -33,7 +33,7 @@ func TestAccountService_SearchSecurities(t *testing.T) {
 	mockTransport.On("Execute", mock.Anything, mock.Anything, mock.Anything, mock.Anything).
 		Return(responseJSON, nil)
 
-	securities, err := client.Accounts.SearchSecurities(context.Background(), "BTC")
+	securities, err := client.Accounts.SearchSecurities(context.Background(), "BTC", 5)
 	require.NoError(t, err)
 	require.Len(t, securities, 1)
 	assert.Equal(t, "sec-123", securities[0].ID)
