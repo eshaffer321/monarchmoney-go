@@ -86,6 +86,10 @@ func (s *transactionService) Create(ctx context.Context, params *CreateTransacti
 		input["notes"] = params.Notes
 	}
 
+	if params.ShouldUpdateBalance != nil {
+		input["shouldUpdateBalance"] = *params.ShouldUpdateBalance
+	}
+
 	variables := map[string]interface{}{
 		"input": input,
 	}
