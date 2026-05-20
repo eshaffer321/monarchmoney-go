@@ -1,11 +1,19 @@
-mutation CreateTransaction($input: CreateTransactionMutationInput!) {
+mutation Common_CreateTransactionMutation($input: CreateTransactionMutationInput!) {
   createTransaction(input: $input) {
-    transaction {
-      id
-    }
     errors {
+      fieldErrors {
+        field
+        messages
+        __typename
+      }
       message
       code
+      __typename
     }
+    transaction {
+      id
+      __typename
+    }
+    __typename
   }
 }

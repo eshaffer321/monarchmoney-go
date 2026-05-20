@@ -376,12 +376,13 @@ type UpdateAccountParams struct {
 
 // CreateTransactionParams for creating transactions
 type CreateTransactionParams struct {
-	Date       Date      `json:"date"`
-	AccountID  string    `json:"accountId"`
-	Amount     float64   `json:"amount"`
-	Merchant   *Merchant `json:"merchant"`
-	CategoryID string    `json:"categoryId"`
-	Notes      string    `json:"notes"`
+	Date                Date      `json:"date"`
+	AccountID           string    `json:"accountId"`
+	Amount              float64   `json:"amount"`
+	Merchant            *Merchant `json:"merchant"`
+	CategoryID          string    `json:"categoryId"`
+	Notes               string    `json:"notes"`
+	ShouldUpdateBalance *bool     `json:"shouldUpdateBalance,omitempty"`
 }
 
 // UpdateTransactionParams for updating transactions
