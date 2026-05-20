@@ -94,6 +94,59 @@ func (s *accountService) Create(ctx context.Context, params *CreateAccountParams
 	return s.Get(ctx, result.CreateManualAccount.Account.ID)
 }
 
+// CreateInvestmentsAccount creates a manual investments account with initial holdings.
+// Uses the Common_CreateManualInvestmentsAccount mutation which creates the account
+// and adds holdings in a single call.
+func (s *accountService) CreateInvestmentsAccount(ctx context.Context, params *CreateInvestmentsAccountParams) (*Account, error) {
+	query := s.client.loadQuery("accounts/create_investments_account.graphql")
+
+	holdings := make([]map[string]interface{}, len(params.InitialHoldings))
+	for i, h := range params.InitialHoldings {
+		holdings[i] = map[string]interface{}{
+			"securityId": h.SecurityID,
+			"quantity":   h.Quantity,
+		}
+	}
+
+	variables := map[string]interface{}{
+		"input": map[string]interface{}{
+			"name":                            params.Name,
+			"subtype":                         params.Subtype,
+			"manualInvestmentsTrackingMethod": params.ManualInvestmentsTrackingMethod,
+			"initialHoldings":                 holdings,
+		},
+	}
+
+	var result struct {
+		CreateManualInvestmentsAccount struct {
+			Account *struct {
+				ID string `json:"id"`
+			} `json:"account"`
+			Errors []struct {
+				Message string `json:"message"`
+				Code    string `json:"code"`
+			} `json:"errors"`
+		} `json:"createManualInvestmentsAccount"`
+	}
+
+	if err := s.client.executeGraphQL(ctx, query, variables, &result); err != nil {
+		return nil, errors.Wrap(err, "failed to create investments account")
+	}
+
+	if len(result.CreateManualInvestmentsAccount.Errors) > 0 {
+		return nil, &Error{
+			Code:    result.CreateManualInvestmentsAccount.Errors[0].Code,
+			Message: result.CreateManualInvestmentsAccount.Errors[0].Message,
+		}
+	}
+
+	if result.CreateManualInvestmentsAccount.Account == nil {
+		return nil, errors.New("no account returned from creation")
+	}
+
+	return s.Get(ctx, result.CreateManualInvestmentsAccount.Account.ID)
+}
+
 // Update updates an existing account
 func (s *accountService) Update(ctx context.Context, accountID string, params *UpdateAccountParams) (*Account, error) {
 	query := s.client.loadQuery("accounts/update.graphql")
@@ -400,34 +453,45 @@ func (s *accountService) GetHistory(ctx context.Context, accountID string) (*Acc
 	return history, nil
 }
 
-// GetHoldings retrieves investment holdings for an account
+// GetHoldings retrieves investment holdings for an account using the portfolio query.
 func (s *accountService) GetHoldings(ctx context.Context, accountID string) ([]*Holding, error) {
 	query := s.client.loadQuery("accounts/holdings.graphql")
 
+	now := time.Now().Format("2006-01-02")
 	variables := map[string]interface{}{
-		"accountId": accountID,
+		"input": map[string]interface{}{
+			"accountIds":            []string{accountID},
+			"endDate":               now,
+			"startDate":             now,
+			"includeHiddenHoldings": true,
+		},
 	}
 
 	var result struct {
-		Account struct {
-			ID       string `json:"id"`
-			Holdings struct {
+		Portfolio struct {
+			AggregateHoldings struct {
 				Edges []struct {
 					Node struct {
-						ID        string    `json:"id"`
-						Symbol    string    `json:"symbol"`
-						Quantity  float64   `json:"quantity"`
-						Price     float64   `json:"price"`
-						Value     float64   `json:"value"`
-						CostBasis float64   `json:"costBasis"`
-						UpdatedAt time.Time `json:"updatedAt"`
-						Holding   struct {
-							Name string `json:"name"`
-						} `json:"holding"`
+						ID       string  `json:"id"`
+						Quantity float64 `json:"quantity"`
+						Basis    float64 `json:"basis"`
+						Value    float64 `json:"totalValue"`
+						Holdings []struct {
+							ID     string  `json:"id"`
+							Name   string  `json:"name"`
+							Ticker string  `json:"ticker"`
+							Price  float64 `json:"closingPrice"`
+						} `json:"holdings"`
+						Security struct {
+							ID     string  `json:"id"`
+							Name   string  `json:"name"`
+							Ticker string  `json:"ticker"`
+							Price  float64 `json:"currentPrice"`
+						} `json:"security"`
 					} `json:"node"`
 				} `json:"edges"`
-			} `json:"holdings"`
-		} `json:"account"`
+			} `json:"aggregateHoldings"`
+		} `json:"portfolio"`
 	}
 
 	if err := s.client.executeGraphQL(ctx, query, variables, &result); err != nil {
@@ -435,17 +499,30 @@ func (s *accountService) GetHoldings(ctx context.Context, accountID string) ([]*
 	}
 
 	var holdings []*Holding
-	for _, edge := range result.Account.Holdings.Edges {
+	for _, edge := range result.Portfolio.AggregateHoldings.Edges {
+		ticker := edge.Node.Security.Ticker
+		name := edge.Node.Security.Name
+		price := edge.Node.Security.Price
+		// Use first sub-holding ID as the holding ID
+		holdingID := edge.Node.ID
+		if len(edge.Node.Holdings) > 0 {
+			holdingID = edge.Node.Holdings[0].ID
+			if ticker == "" {
+				ticker = edge.Node.Holdings[0].Ticker
+			}
+			if name == "" {
+				name = edge.Node.Holdings[0].Name
+			}
+		}
 		holdings = append(holdings, &Holding{
-			ID:        edge.Node.ID,
+			ID:        holdingID,
 			AccountID: accountID,
-			Symbol:    edge.Node.Symbol,
-			Name:      edge.Node.Holding.Name,
+			Symbol:    ticker,
+			Name:      name,
 			Quantity:  edge.Node.Quantity,
-			Price:     edge.Node.Price,
+			Price:     price,
 			Value:     edge.Node.Value,
-			CostBasis: edge.Node.CostBasis,
-			UpdatedAt: edge.Node.UpdatedAt,
+			CostBasis: edge.Node.Basis,
 		})
 	}
 
