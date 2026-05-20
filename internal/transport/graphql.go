@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/eshaffer321/monarchmoney-go/internal/types"
@@ -36,8 +37,9 @@ type GraphQLTransport struct {
 
 // GraphQLRequest represents a GraphQL request
 type GraphQLRequest struct {
-	Query     string                 `json:"query"`
-	Variables map[string]interface{} `json:"variables,omitempty"`
+	Query         string                 `json:"query"`
+	Variables     map[string]interface{} `json:"variables,omitempty"`
+	OperationName string                 `json:"operationName,omitempty"`
 }
 
 // GraphQLResponse represents a GraphQL response
@@ -83,7 +85,8 @@ func NewGraphQLTransport(opts *Options) *GraphQLTransport {
 		"Content-Type":    contentType,
 		"Client-Platform": "web",
 		"User-Agent":      types.UserAgent,
-		"Origin":          "https://app.monarchmoney.com",
+		"Origin":          "https://app.monarch.com",
+		"Referer":         "https://app.monarch.com/",
 	}
 
 	// Merge custom headers
@@ -113,10 +116,22 @@ func (t *GraphQLTransport) Execute(ctx context.Context, query string, variables 
 		return types.ErrSessionExpired
 	}
 
-	// Create request
+	// Create request — include operationName for servers that require it
+	opName := ""
+	for _, prefix := range []string{"mutation ", "query ", "subscription "} {
+		if idx := strings.Index(query, prefix); idx >= 0 {
+			rest := query[idx+len(prefix):]
+			if end := strings.IndexAny(rest, "( {"); end > 0 {
+				opName = rest[:end]
+			}
+			break
+		}
+	}
+
 	req := &GraphQLRequest{
-		Query:     query,
-		Variables: variables,
+		Query:         query,
+		Variables:     variables,
+		OperationName: opName,
 	}
 
 	// Marshal request
@@ -267,6 +282,13 @@ func (t *GraphQLTransport) handleHTTPError(statusCode int, body []byte) error {
 		msg := errResp.Message
 		if msg == "" {
 			msg = errResp.Error
+		}
+		if msg == "" {
+			// Include raw body for debugging when no structured error found
+			msg = string(body)
+			if len(msg) > 500 {
+				msg = msg[:500]
+			}
 		}
 		return &types.Error{
 			Code:       "BAD_REQUEST",

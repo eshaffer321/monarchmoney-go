@@ -23,9 +23,9 @@ import (
 )
 
 const (
-	loginEndpoint = "/auth/login/"
-	mfaEndpoint   = "/auth/login/mfa/"
-	userAgent     = "monarchmoney-go/1.0.0"
+	loginEndpoint    = "/auth/login/"
+	mfaEndpoint      = "/auth/login/mfa/"
+	defaultUserAgent = "monarchmoney-go/1.0.0"
 )
 
 // Service handles authentication operations
@@ -37,14 +37,19 @@ type Service struct {
 	logger     types.Logger
 }
 
-// NewService creates a new auth service
-func NewService(baseURL string, httpClient *http.Client, logger types.Logger) *Service {
+// NewService creates a new auth service. An optional userAgent can be provided;
+// if empty, the default library user-agent is used.
+func NewService(baseURL string, httpClient *http.Client, logger types.Logger, userAgent string) *Service {
+	if userAgent == "" {
+		userAgent = defaultUserAgent
+	}
 	headers := map[string]string{
 		"Accept":          "application/json",
 		"Content-Type":    "application/json",
 		"Client-Platform": "web",
 		"User-Agent":      userAgent,
-		"Origin":          "https://app.monarchmoney.com",
+		"Origin":          "https://app.monarch.com",
+		"Referer":         "https://app.monarch.com/",
 		"device-uuid":     uuid.New().String(),
 	}
 
@@ -91,15 +96,10 @@ func (s *Service) LoginWithTOTP(ctx context.Context, email, password, totpSecret
 	return s.submitMFA(ctx, email, password, code)
 }
 
-// LoginWithEmailOTP performs login with email OTP code
+// LoginWithEmailOTP performs login with email OTP code.
+// NOTE: The initial login must have already been attempted (which triggers the OTP email).
+// Re-submits login with the OTP code in the email_otp field.
 func (s *Service) LoginWithEmailOTP(ctx context.Context, email, password, otpCode string) error {
-	// First attempt login
-	err := s.login(ctx, email, password, "")
-	if err != nil && err.Error() != "Email OTP required" {
-		return err
-	}
-
-	// Submit OTP code
 	return s.submitEmailOTP(ctx, email, password, otpCode)
 }
 
@@ -128,7 +128,7 @@ func (s *Service) LoginInteractive(ctx context.Context, email, password string) 
 		// Trim whitespace and newline
 		otpCode = strings.TrimSpace(otpCode)
 
-		// Submit OTP code
+		// Submit OTP code via email_otp field
 		return s.submitEmailOTP(ctx, email, password, otpCode)
 
 	} else if err.Error() == "MFA required" {
