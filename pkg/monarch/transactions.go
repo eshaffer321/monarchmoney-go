@@ -60,26 +60,28 @@ func (s *transactionService) Get(ctx context.Context, transactionID string) (*Tr
 	return result.GetTransaction, nil
 }
 
-// Create creates a new transaction
+// Create creates a new transaction.
+// CategoryID is required by the Monarch API — use Transactions.Categories.List()
+// to find a valid ID (e.g. the "Uncategorized" category).
 func (s *transactionService) Create(ctx context.Context, params *CreateTransactionParams) (*Transaction, error) {
+	if params.CategoryID == "" {
+		return nil, errors.New("CategoryID is required by the Monarch API")
+	}
+
 	query := s.client.loadQuery("transactions/create.graphql")
 
 	// Round amount to 2 decimal places as Monarch expects
 	roundedAmount := math.Round(params.Amount*100) / 100
 
-	// Send only required fields — optional fields added below if present
 	input := map[string]interface{}{
-		"date":      params.Date.Format("2006-01-02"),
-		"accountId": params.AccountID,
-		"amount":    roundedAmount,
+		"date":       params.Date.Format("2006-01-02"),
+		"accountId":  params.AccountID,
+		"amount":     roundedAmount,
+		"categoryId": params.CategoryID,
 	}
 
 	if params.Merchant != nil && params.Merchant.Name != "" {
 		input["merchantName"] = params.Merchant.Name
-	}
-
-	if params.CategoryID != "" {
-		input["categoryId"] = params.CategoryID
 	}
 
 	if params.Notes != "" {
