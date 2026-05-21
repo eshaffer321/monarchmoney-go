@@ -2,6 +2,7 @@ package monarch
 
 import (
 	"context"
+	"errors"
 	"testing"
 	"time"
 
@@ -327,6 +328,205 @@ func TestTransactionService_Create(t *testing.T) {
 	assert.Equal(t, -100.00, txn.Amount)
 
 	mockTransport.AssertExpectations(t)
+}
+
+func TestTransactionService_Create_RoundsAmount(t *testing.T) {
+	mockTransport := new(MockTransport)
+	client := &Client{
+		transport:   mockTransport,
+		queryLoader: graphql.NewQueryLoader(),
+		options:     &ClientOptions{},
+		baseURL:     "https://api.test.com",
+	}
+	service := newTransactionService(client)
+
+	mockTransport.On("Execute",
+		mock.Anything,
+		mock.AnythingOfType("string"),
+		mock.MatchedBy(func(v map[string]interface{}) bool {
+			input, ok := v["input"].(map[string]interface{})
+			if !ok {
+				return false
+			}
+			amount, ok := input["amount"].(float64)
+			return ok && amount == -99.99 // should be rounded from -99.9876
+		}),
+		mock.Anything,
+	).Return(`{"createTransaction":{"transaction":{"id":"txn-1"},"errors":[]}}`, nil).Once()
+
+	txn, err := service.Create(context.Background(), &CreateTransactionParams{
+		Date:      Date{Time: time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)},
+		AccountID: "acc-1",
+		Amount:    -99.9876,
+	})
+
+	require.NoError(t, err)
+	assert.Equal(t, -99.99, txn.Amount)
+	mockTransport.AssertExpectations(t)
+}
+
+func TestTransactionService_Create_ShouldUpdateBalance(t *testing.T) {
+	mockTransport := new(MockTransport)
+	client := &Client{
+		transport:   mockTransport,
+		queryLoader: graphql.NewQueryLoader(),
+		options:     &ClientOptions{},
+		baseURL:     "https://api.test.com",
+	}
+	service := newTransactionService(client)
+
+	shouldUpdate := false
+	mockTransport.On("Execute",
+		mock.Anything,
+		mock.AnythingOfType("string"),
+		mock.MatchedBy(func(v map[string]interface{}) bool {
+			input, ok := v["input"].(map[string]interface{})
+			if !ok {
+				return false
+			}
+			val, exists := input["shouldUpdateBalance"]
+			return exists && val == false
+		}),
+		mock.Anything,
+	).Return(`{"createTransaction":{"transaction":{"id":"txn-2"},"errors":[]}}`, nil).Once()
+
+	txn, err := service.Create(context.Background(), &CreateTransactionParams{
+		Date:                Date{Time: time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)},
+		AccountID:           "acc-1",
+		Amount:              50.0,
+		ShouldUpdateBalance: &shouldUpdate,
+	})
+
+	require.NoError(t, err)
+	assert.Equal(t, "txn-2", txn.ID)
+	mockTransport.AssertExpectations(t)
+}
+
+func TestTransactionService_Create_NoMerchantNoCategoryID(t *testing.T) {
+	mockTransport := new(MockTransport)
+	client := &Client{
+		transport:   mockTransport,
+		queryLoader: graphql.NewQueryLoader(),
+		options:     &ClientOptions{},
+		baseURL:     "https://api.test.com",
+	}
+	service := newTransactionService(client)
+
+	mockTransport.On("Execute",
+		mock.Anything,
+		mock.AnythingOfType("string"),
+		mock.MatchedBy(func(v map[string]interface{}) bool {
+			input, ok := v["input"].(map[string]interface{})
+			if !ok {
+				return false
+			}
+			_, hasMerchant := input["merchantName"]
+			_, hasCat := input["categoryId"]
+			return !hasMerchant && !hasCat // neither should be present
+		}),
+		mock.Anything,
+	).Return(`{"createTransaction":{"transaction":{"id":"txn-3"},"errors":[]}}`, nil).Once()
+
+	txn, err := service.Create(context.Background(), &CreateTransactionParams{
+		Date:      Date{Time: time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)},
+		AccountID: "acc-1",
+		Amount:    10.0,
+	})
+
+	require.NoError(t, err)
+	assert.Equal(t, "txn-3", txn.ID)
+	mockTransport.AssertExpectations(t)
+}
+
+func TestTransactionService_Create_FieldErrors(t *testing.T) {
+	mockTransport := new(MockTransport)
+	client := &Client{
+		transport:   mockTransport,
+		queryLoader: graphql.NewQueryLoader(),
+		options:     &ClientOptions{},
+		baseURL:     "https://api.test.com",
+	}
+	service := newTransactionService(client)
+
+	errorResp := `{
+		"createTransaction": {
+			"transaction": null,
+			"errors": [{
+				"message": "Validation failed",
+				"code": "INVALID_INPUT",
+				"fieldErrors": [
+					{"field": "amount", "messages": ["must be non-zero"]},
+					{"field": "date", "messages": ["is required", "must be valid"]}
+				]
+			}]
+		}
+	}`
+
+	mockTransport.On("Execute",
+		mock.Anything, mock.AnythingOfType("string"),
+		mock.Anything, mock.Anything,
+	).Return(errorResp, nil).Once()
+
+	_, err := service.Create(context.Background(), &CreateTransactionParams{
+		Date:      Date{Time: time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)},
+		AccountID: "acc-1",
+		Amount:    0,
+	})
+
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "Validation failed")
+	assert.Contains(t, err.Error(), "amount: must be non-zero")
+	assert.Contains(t, err.Error(), "date: is required, must be valid")
+}
+
+func TestTransactionService_Create_NoTransactionReturned(t *testing.T) {
+	mockTransport := new(MockTransport)
+	client := &Client{
+		transport:   mockTransport,
+		queryLoader: graphql.NewQueryLoader(),
+		options:     &ClientOptions{},
+		baseURL:     "https://api.test.com",
+	}
+	service := newTransactionService(client)
+
+	mockTransport.On("Execute",
+		mock.Anything, mock.AnythingOfType("string"),
+		mock.Anything, mock.Anything,
+	).Return(`{"createTransaction":{"transaction":null,"errors":[]}}`, nil).Once()
+
+	_, err := service.Create(context.Background(), &CreateTransactionParams{
+		Date:      Date{Time: time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)},
+		AccountID: "acc-1",
+		Amount:    10.0,
+	})
+
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "no transaction returned")
+}
+
+func TestTransactionService_Create_GraphQLError(t *testing.T) {
+	mockTransport := new(MockTransport)
+	client := &Client{
+		transport:   mockTransport,
+		queryLoader: graphql.NewQueryLoader(),
+		options:     &ClientOptions{},
+		baseURL:     "https://api.test.com",
+	}
+	service := newTransactionService(client)
+
+	mockTransport.On("Execute",
+		mock.Anything, mock.AnythingOfType("string"),
+		mock.Anything, mock.Anything,
+	).Return("", errors.New("graphql error")).Once()
+
+	_, err := service.Create(context.Background(), &CreateTransactionParams{
+		Date:      Date{Time: time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)},
+		AccountID: "acc-1",
+		Amount:    10.0,
+	})
+
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "failed to create transaction")
 }
 
 func TestTransactionCategoryService_List(t *testing.T) {
