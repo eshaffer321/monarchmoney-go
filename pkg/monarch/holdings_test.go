@@ -180,6 +180,22 @@ func TestAccountService_CreateHoldingByTicker_NotFound(t *testing.T) {
 	assert.Contains(t, err.Error(), "no security found")
 }
 
+func TestAccountService_CreateHoldingByTicker_NoExactMatch(t *testing.T) {
+	mockTransport := new(MockTransport)
+	client := newTestClient(mockTransport)
+	client.Accounts = &accountService{client: client}
+
+	// Results exist but none match the exact ticker
+	searchResponse := `{"securities": [{"id": "sec-1", "name": "Bitcoin Cash", "ticker": "BCH", "currentPrice": 400}]}`
+
+	mockTransport.On("Execute", mock.Anything, mock.Anything, mock.Anything, mock.Anything).
+		Return(searchResponse, nil)
+
+	_, err := client.Accounts.CreateHoldingByTicker(context.Background(), "acc-789", "BTC", 1.0)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "no exact ticker match")
+}
+
 func TestAccountService_SearchSecurities_DefaultLimit(t *testing.T) {
 	mockTransport := new(MockTransport)
 	client := newTestClient(mockTransport)
@@ -262,111 +278,74 @@ func TestAccountService_UpdateHoldingQuantity(t *testing.T) {
 	client := newTestClient(mockTransport)
 	client.Accounts = &accountService{client: client}
 
-	// Call 1: GetHoldings (portfolio query format)
-	holdingsResponse := `{
-		"portfolio": {
-			"aggregateHoldings": {
-				"edges": [{
-					"node": {
-						"id": "agg-1",
-						"quantity": 1.0,
-						"basis": 50000,
-						"totalValue": 94000,
-						"holdings": [{"id": "hold-1", "name": "Bitcoin", "ticker": "BTC", "closingPrice": 94000}],
-						"security": {"id": "sec-btc", "name": "Bitcoin", "ticker": "BTC", "currentPrice": 94000}
-					}
-				}]
-			}
+	responseJSON := `{
+		"updateHolding": {
+			"holding": {"id": "hold-1", "quantity": 2.5},
+			"errors": []
 		}
 	}`
 
-	// Call 2: DeleteHolding
-	deleteResponse := `{"deleteHolding": {"deleted": true, "errors": []}}`
-
-	// Call 3: SearchSecurities (from CreateHoldingByTicker)
-	searchResponse := `{"securities": [{"id": "sec-btc", "name": "Bitcoin", "ticker": "BTC", "currentPrice": 94000}]}`
-
-	// Call 4: CreateHolding
-	createResponse := `{"createManualHolding": {"holding": {"id": "hold-new", "ticker": "BTC"}, "errors": []}}`
-
 	mockTransport.On("Execute", mock.Anything, mock.Anything, mock.Anything, mock.Anything).
-		Return(holdingsResponse, nil).Once()
-	mockTransport.On("Execute", mock.Anything, mock.Anything, mock.Anything, mock.Anything).
-		Return(deleteResponse, nil).Once()
-	mockTransport.On("Execute", mock.Anything, mock.Anything, mock.Anything, mock.Anything).
-		Return(searchResponse, nil).Once()
-	mockTransport.On("Execute", mock.Anything, mock.Anything, mock.Anything, mock.Anything).
-		Return(createResponse, nil).Once()
+		Return(responseJSON, nil)
 
 	holding, err := client.Accounts.UpdateHoldingQuantity(context.Background(), "acc-1", "hold-1", 2.5)
 	require.NoError(t, err)
-	assert.Equal(t, "hold-new", holding.ID)
+	assert.Equal(t, "hold-1", holding.ID)
+	assert.Equal(t, "acc-1", holding.AccountID)
 	assert.Equal(t, 2.5, holding.Quantity)
-	mockTransport.AssertExpectations(t)
 }
 
-func TestAccountService_UpdateHoldingQuantity_HoldingNotFound(t *testing.T) {
+func TestAccountService_UpdateHoldingQuantity_GraphQLError(t *testing.T) {
 	mockTransport := new(MockTransport)
 	client := newTestClient(mockTransport)
 	client.Accounts = &accountService{client: client}
 
-	holdingsResponse := `{
-		"portfolio": {
-			"aggregateHoldings": {"edges": []}
+	mockTransport.On("Execute", mock.Anything, mock.Anything, mock.Anything, mock.Anything).
+		Return("", errors.New("network error"))
+
+	_, err := client.Accounts.UpdateHoldingQuantity(context.Background(), "acc-1", "hold-1", 2.0)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "failed to update holding")
+}
+
+func TestAccountService_UpdateHoldingQuantity_MutationErrors(t *testing.T) {
+	mockTransport := new(MockTransport)
+	client := newTestClient(mockTransport)
+	client.Accounts = &accountService{client: client}
+
+	responseJSON := `{
+		"updateHolding": {
+			"holding": null,
+			"errors": [{"message": "holding not found", "code": "NOT_FOUND"}]
 		}
 	}`
 
 	mockTransport.On("Execute", mock.Anything, mock.Anything, mock.Anything, mock.Anything).
-		Return(holdingsResponse, nil)
+		Return(responseJSON, nil)
 
-	_, err := client.Accounts.UpdateHoldingQuantity(context.Background(), "acc-1", "nonexistent", 2.0)
+	_, err := client.Accounts.UpdateHoldingQuantity(context.Background(), "acc-1", "hold-bad", 2.0)
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "holding not found")
 }
 
-func TestAccountService_UpdateHoldingQuantity_GetHoldingsError(t *testing.T) {
+func TestAccountService_UpdateHoldingQuantity_NilHolding(t *testing.T) {
 	mockTransport := new(MockTransport)
 	client := newTestClient(mockTransport)
 	client.Accounts = &accountService{client: client}
 
-	mockTransport.On("Execute", mock.Anything, mock.Anything, mock.Anything, mock.Anything).
-		Return("", errors.New("API error"))
-
-	_, err := client.Accounts.UpdateHoldingQuantity(context.Background(), "acc-1", "hold-1", 2.0)
-	require.Error(t, err)
-	assert.Contains(t, err.Error(), "failed to get holdings")
-}
-
-func TestAccountService_UpdateHoldingQuantity_DeleteError(t *testing.T) {
-	mockTransport := new(MockTransport)
-	client := newTestClient(mockTransport)
-	client.Accounts = &accountService{client: client}
-
-	holdingsResponse := `{
-		"portfolio": {
-			"aggregateHoldings": {
-				"edges": [{
-					"node": {
-						"id": "agg-1",
-						"quantity": 1.0,
-						"basis": 50000,
-						"totalValue": 94000,
-						"holdings": [{"id": "hold-1", "name": "Bitcoin", "ticker": "BTC", "closingPrice": 94000}],
-						"security": {"id": "sec-btc", "name": "Bitcoin", "ticker": "BTC", "currentPrice": 94000}
-					}
-				}]
-			}
+	responseJSON := `{
+		"updateHolding": {
+			"holding": null,
+			"errors": []
 		}
 	}`
 
 	mockTransport.On("Execute", mock.Anything, mock.Anything, mock.Anything, mock.Anything).
-		Return(holdingsResponse, nil).Once()
-	mockTransport.On("Execute", mock.Anything, mock.Anything, mock.Anything, mock.Anything).
-		Return("", errors.New("delete failed")).Once()
+		Return(responseJSON, nil)
 
 	_, err := client.Accounts.UpdateHoldingQuantity(context.Background(), "acc-1", "hold-1", 2.0)
 	require.Error(t, err)
-	assert.Contains(t, err.Error(), "failed to delete old holding")
+	assert.Contains(t, err.Error(), "no holding returned")
 }
 
 func TestAccountService_CreateHoldingByTicker_SearchError(t *testing.T) {

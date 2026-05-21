@@ -3,6 +3,7 @@ package monarch
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"github.com/pkg/errors"
 )
@@ -106,17 +107,16 @@ func (s *accountService) CreateHoldingByTicker(ctx context.Context, accountID, t
 		return nil, fmt.Errorf("no security found for ticker: %s", ticker)
 	}
 
-	// Find exact ticker match
+	// Require exact case-insensitive ticker match
 	var securityID string
 	for _, sec := range securities {
-		if sec.Ticker == ticker {
+		if strings.EqualFold(sec.Ticker, ticker) {
 			securityID = sec.ID
 			break
 		}
 	}
 	if securityID == "" {
-		// Fall back to first result
-		securityID = securities[0].ID
+		return nil, fmt.Errorf("no exact ticker match for %q in search results", ticker)
 	}
 
 	return s.CreateHolding(ctx, &CreateHoldingParams{
@@ -162,32 +162,48 @@ func (s *accountService) DeleteHolding(ctx context.Context, holdingID string) er
 	return nil
 }
 
-// UpdateHoldingQuantity updates a holding's quantity by deleting and recreating it.
-// The Monarch API does not support direct quantity updates on holdings.
+// UpdateHoldingQuantity updates a holding's quantity via the updateHolding mutation.
 func (s *accountService) UpdateHoldingQuantity(ctx context.Context, accountID, holdingID string, newQuantity float64) (*Holding, error) {
-	// Get the current holding to preserve the security info
-	holdings, err := s.GetHoldings(ctx, accountID)
-	if err != nil {
-		return nil, errors.Wrap(err, "failed to get holdings")
+	gql := s.client.loadQuery("accounts/update_holding.graphql")
+
+	variables := map[string]interface{}{
+		"input": map[string]interface{}{
+			"id":       holdingID,
+			"quantity": newQuantity,
+		},
 	}
 
-	var targetHolding *Holding
-	for _, h := range holdings {
-		if h.ID == holdingID {
-			targetHolding = h
-			break
+	var result struct {
+		UpdateHolding struct {
+			Holding *struct {
+				ID       string  `json:"id"`
+				Quantity float64 `json:"quantity"`
+			} `json:"holding"`
+			Errors []struct {
+				Message string `json:"message"`
+				Code    string `json:"code"`
+			} `json:"errors"`
+		} `json:"updateHolding"`
+	}
+
+	if err := s.client.executeGraphQL(ctx, gql, variables, &result); err != nil {
+		return nil, errors.Wrap(err, "failed to update holding")
+	}
+
+	if len(result.UpdateHolding.Errors) > 0 {
+		return nil, &Error{
+			Code:    result.UpdateHolding.Errors[0].Code,
+			Message: result.UpdateHolding.Errors[0].Message,
 		}
 	}
 
-	if targetHolding == nil {
-		return nil, fmt.Errorf("holding not found: %s", holdingID)
+	if result.UpdateHolding.Holding == nil {
+		return nil, errors.New("no holding returned from update")
 	}
 
-	// Delete the old holding
-	if err := s.DeleteHolding(ctx, holdingID); err != nil {
-		return nil, errors.Wrap(err, "failed to delete old holding")
-	}
-
-	// Recreate with the new quantity using the ticker
-	return s.CreateHoldingByTicker(ctx, accountID, targetHolding.Symbol, newQuantity)
+	return &Holding{
+		ID:        result.UpdateHolding.Holding.ID,
+		AccountID: accountID,
+		Quantity:  result.UpdateHolding.Holding.Quantity,
+	}, nil
 }

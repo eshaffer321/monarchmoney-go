@@ -513,6 +513,14 @@ func (s *accountService) GetHoldings(ctx context.Context, accountID string) ([]*
 			if name == "" {
 				name = edge.Node.Holdings[0].Name
 			}
+			// Fall back to sub-holding closingPrice if security price is zero
+			if price == 0 {
+				price = edge.Node.Holdings[0].Price
+			}
+		}
+		// Derive from totalValue/quantity as last resort
+		if price == 0 && edge.Node.Quantity > 0 {
+			price = edge.Node.Value / edge.Node.Quantity
 		}
 		holdings = append(holdings, &Holding{
 			ID:        holdingID,
