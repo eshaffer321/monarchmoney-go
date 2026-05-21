@@ -1,0 +1,9 @@
+mutation Common_DeleteHolding($id: ID!) {
+  deleteHolding(id: $id) {
+    deleted
+    errors {
+      message
+      code
+    }
+  }
+}

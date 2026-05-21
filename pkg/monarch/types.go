@@ -351,6 +351,20 @@ type CreateAccountParams struct {
 	IncludeInNetWorth bool    `json:"includeInNetWorth"`
 }
 
+// CreateInvestmentsAccountParams for creating a manual investments account with holdings.
+type CreateInvestmentsAccountParams struct {
+	Name                          string            `json:"name"`
+	Subtype                       string            `json:"subtype"`
+	ManualInvestmentsTrackingMethod string          `json:"manualInvestmentsTrackingMethod"`
+	InitialHoldings               []InitialHolding  `json:"initialHoldings"`
+}
+
+// InitialHolding represents a holding to include when creating an investments account.
+type InitialHolding struct {
+	SecurityID string  `json:"securityId"`
+	Quantity   float64 `json:"quantity"`
+}
+
 // UpdateAccountParams for updating accounts
 type UpdateAccountParams struct {
 	DisplayName                 *string  `json:"displayName,omitempty"`

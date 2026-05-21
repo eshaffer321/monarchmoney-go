@@ -1,0 +1,15 @@
+mutation Common_UpdateHoldingMutation($input: UpdateHoldingInput!) {
+  updateHolding(input: $input) {
+    holding {
+      id
+      quantity
+      __typename
+    }
+    errors {
+      message
+      code
+      __typename
+    }
+    __typename
+  }
+}
