@@ -21,6 +21,7 @@ func newAuthService(client *Client) *authService {
 			client.baseURL,
 			client.httpClient,
 			client.options.Logger,
+			client.options.UserAgent,
 		),
 	}
 }
@@ -65,6 +66,29 @@ func (a *authService) Login(ctx context.Context, email, password string) error {
 // LoginWithMFA performs login with MFA
 func (a *authService) LoginWithMFA(ctx context.Context, email, password, mfaCode string) error {
 	if err := a.service.LoginWithMFA(ctx, email, password, mfaCode); err != nil {
+		return err
+	}
+
+	// Get session and update client
+	session, err := a.service.GetSession()
+	if err != nil {
+		return err
+	}
+
+	a.client.session = a.convertSession(session)
+	a.client.transport.SetSession(session)
+
+	// Save session if configured
+	if a.client.options.SessionFile != "" {
+		_ = a.service.SaveSession(a.client.options.SessionFile)
+	}
+
+	return nil
+}
+
+// LoginWithEmailOTP performs login with email OTP code
+func (a *authService) LoginWithEmailOTP(ctx context.Context, email, password, otpCode string) error {
+	if err := a.service.LoginWithEmailOTP(ctx, email, password, otpCode); err != nil {
 		return err
 	}
 
