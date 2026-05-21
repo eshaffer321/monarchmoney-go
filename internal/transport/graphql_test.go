@@ -1,9 +1,16 @@
 package transport
 
 import (
+	"context"
+	"encoding/json"
+	"net/http"
+	"net/http/httptest"
 	"testing"
+	"time"
 
+	"github.com/eshaffer321/monarchmoney-go/internal/types"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestHandleHTTPError_ServerError_IncludesResponseBody(t *testing.T) {
@@ -85,4 +92,152 @@ func TestHandleHTTPError_ServerError_IncludesStatusCodeDescription(t *testing.T)
 			assert.Contains(t, errMsg, tt.expectedDesc, "error should include human-readable description")
 		})
 	}
+}
+
+func TestHandleHTTPError_BadRequest_RawBody(t *testing.T) {
+	transport := &GraphQLTransport{}
+
+	tests := []struct {
+		name         string
+		body         []byte
+		expectedMsg  string
+	}{
+		{
+			name:        "structured JSON error",
+			body:        []byte(`{"message": "invalid field"}`),
+			expectedMsg: "invalid field",
+		},
+		{
+			name:        "no message, uses error field",
+			body:        []byte(`{"error": "bad input"}`),
+			expectedMsg: "bad input",
+		},
+		{
+			name:        "no structured error, falls back to raw body",
+			body:        []byte(`something went wrong with processing`),
+			expectedMsg: "something went wrong with processing",
+		},
+		{
+			name:        "empty body, raw body fallback is empty string",
+			body:        []byte{},
+			expectedMsg: "",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := transport.handleHTTPError(http.StatusBadRequest, tt.body)
+			assert.Error(t, err)
+			typedErr, ok := err.(*types.Error)
+			require.True(t, ok)
+			assert.Equal(t, "BAD_REQUEST", typedErr.Code)
+			assert.Contains(t, typedErr.Message, tt.expectedMsg)
+		})
+	}
+}
+
+func TestNewGraphQLTransport_DefaultHeaders(t *testing.T) {
+	transport := NewGraphQLTransport(nil)
+
+	assert.Equal(t, "https://api.monarch.com", transport.baseURL)
+	assert.Equal(t, "https://app.monarch.com", transport.headers["Origin"])
+	assert.Equal(t, "https://app.monarch.com/", transport.headers["Referer"])
+	assert.Equal(t, types.UserAgent, transport.headers["User-Agent"])
+}
+
+func TestNewGraphQLTransport_CustomHeaders(t *testing.T) {
+	transport := NewGraphQLTransport(&Options{
+		Headers: map[string]string{
+			"X-Custom": "test-value",
+		},
+	})
+
+	assert.Equal(t, "test-value", transport.headers["X-Custom"])
+	// Default headers should still be present
+	assert.Equal(t, "https://app.monarch.com", transport.headers["Origin"])
+}
+
+func TestExecute_OperationName(t *testing.T) {
+	// Set up a test server that captures the request
+	var receivedReq GraphQLRequest
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		json.NewDecoder(r.Body).Decode(&receivedReq)
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(map[string]interface{}{
+			"data": map[string]interface{}{"test": "ok"},
+		})
+	}))
+	defer server.Close()
+
+	transport := NewGraphQLTransport(&Options{
+		BaseURL: server.URL,
+	})
+	transport.session = &types.Session{
+		Token:     "test-token",
+		ExpiresAt: time.Now().Add(1 * time.Hour),
+	}
+
+	tests := []struct {
+		name     string
+		query    string
+		expected string
+	}{
+		{"mutation", "mutation CreateTransaction($input: Input!) { create { id } }", "CreateTransaction"},
+		{"query", "query GetAccounts { accounts { id } }", "GetAccounts"},
+		{"no operation name", "{ accounts { id } }", ""},
+		{"mutation with parens", "mutation Common_Create($x: X) { create { id } }", "Common_Create"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			receivedReq = GraphQLRequest{} // reset between tests
+			var result map[string]interface{}
+			err := transport.Execute(context.Background(), tt.query, nil, &result)
+			require.NoError(t, err)
+			assert.Equal(t, tt.expected, receivedReq.OperationName)
+		})
+	}
+}
+
+func TestExecute_NotAuthenticated(t *testing.T) {
+	transport := NewGraphQLTransport(nil)
+	// No session set
+	err := transport.Execute(context.Background(), "query { test }", nil, nil)
+	assert.ErrorIs(t, err, types.ErrNotAuthenticated)
+}
+
+func TestExecute_SessionExpired(t *testing.T) {
+	transport := NewGraphQLTransport(nil)
+	transport.session = &types.Session{
+		Token:     "expired-token",
+		ExpiresAt: time.Now().Add(-1 * time.Hour),
+	}
+	err := transport.Execute(context.Background(), "query { test }", nil, nil)
+	assert.ErrorIs(t, err, types.ErrSessionExpired)
+}
+
+func TestTruncateQuery(t *testing.T) {
+	short := "query { test }"
+	assert.Equal(t, short, truncateQuery(short))
+
+	long := ""
+	for i := 0; i < 200; i++ {
+		long += "x"
+	}
+	truncated := truncateQuery(long)
+	assert.Equal(t, 103, len(truncated)) // 100 + "..."
+	assert.Contains(t, truncated, "...")
+}
+
+func TestSetAuth(t *testing.T) {
+	transport := NewGraphQLTransport(nil)
+	transport.SetAuth("my-token")
+	assert.Equal(t, "my-token", transport.session.Token)
+}
+
+func TestSetSession(t *testing.T) {
+	transport := NewGraphQLTransport(nil)
+	session := &types.Session{Token: "tok", UserID: "uid"}
+	transport.SetSession(session)
+	assert.Equal(t, session, transport.session)
 }
