@@ -13,7 +13,7 @@ const (
 	DefaultTimeout = 30 * time.Second
 
 	// UserAgent is the user agent string
-	UserAgent = "monarchmoney-go/1.0.0"
+	UserAgent = "monarchmoney-go/1.1.0"
 )
 
 // Common errors

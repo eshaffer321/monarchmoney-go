@@ -53,7 +53,7 @@ type AccountService interface {
 	// DeleteHolding deletes a manual investment holding
 	DeleteHolding(ctx context.Context, holdingID string) error
 
-	// UpdateHoldingQuantity updates a holding's quantity (delete + recreate)
+	// UpdateHoldingQuantity updates a holding's quantity
 	UpdateHoldingQuantity(ctx context.Context, accountID, holdingID string, newQuantity float64) (*Holding, error)
 
 	// Refresh triggers a refresh for specified accounts

@@ -61,7 +61,7 @@ func (s *transactionService) Get(ctx context.Context, transactionID string) (*Tr
 }
 
 // Create creates a new transaction.
-// CategoryID is required by the Monarch API — use Transactions.Categories.List()
+// CategoryID is required by the Monarch API — use Transactions.Categories().List()
 // to find a valid ID (e.g. the "Uncategorized" category).
 func (s *transactionService) Create(ctx context.Context, params *CreateTransactionParams) (*Transaction, error) {
 	if params.CategoryID == "" {

@@ -20,7 +20,7 @@ const (
 	DefaultTimeout = 30 * time.Second
 
 	// UserAgent is the user agent string
-	UserAgent = "monarch-go/1.0.0"
+	UserAgent = "monarch-go/1.1.0"
 )
 
 // Client is the main Monarch Money API client

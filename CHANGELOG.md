@@ -7,6 +7,35 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.1.0] - 2026-05-21
+
+### Added
+- Added configurable auth `UserAgent` support via `ClientOptions.UserAgent`.
+- Added `AuthService.LoginWithEmailOTP` for email one-time-password login flows.
+- Added investment holdings management:
+  - `Accounts.SearchSecurities`
+  - `Accounts.CreateHolding`
+  - `Accounts.CreateHoldingByTicker`
+  - `Accounts.UpdateHoldingQuantity`
+  - `Accounts.DeleteHolding`
+- Added manual investments account creation with initial holdings via `Accounts.CreateInvestmentsAccount`.
+- Added GraphQL `operationName` extraction and submission in transport requests.
+
+### Changed
+- Updated auth request headers to use the current Monarch app origin and referer.
+- `Transactions.Create` now uses Monarch's current create transaction mutation shape, including `merchantName` instead of the previous `merchant` object.
+- `Transactions.Create` no longer performs a follow-up `Get` after creating a transaction. It now returns the created transaction ID plus request-derived fields to avoid false failures from Monarch's `getTransaction` endpoint.
+- `Transactions.Create` rounds amounts to two decimal places before sending them to Monarch.
+- `Accounts.GetHoldings` now uses the account-based holdings endpoint and has a more resilient price fallback chain.
+- `Accounts.UpdateHoldingQuantity` now uses the direct `updateHolding` mutation instead of delete-and-recreate, preserving holding metadata.
+- `Accounts.CreateHoldingByTicker` now requires a case-insensitive exact ticker match instead of silently using the first search result.
+
+### Fixed
+- Fixed `Transactions.Create` by matching Monarch's current mutation schema and response format.
+- Fixed `Transactions.Create` to require `CategoryID` locally with a clear error before calling Monarch, avoiding Monarch's vague backend `BAD_REQUEST`.
+- Improved `Transactions.Create` mutation error messages by parsing `fieldErrors`.
+- Improved `BAD_REQUEST` transport errors by including the raw response body when Monarch does not provide a structured message.
+
 ## [1.0.5] - 2026-01-17
 
 ### Fixed
@@ -121,7 +150,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 All development work leading up to the v1.0.0 release.
 
-[Unreleased]: https://github.com/eshaffer321/monarchmoney-go/compare/v1.0.5...HEAD
+[Unreleased]: https://github.com/eshaffer321/monarchmoney-go/compare/v1.1.0...HEAD
+[1.1.0]: https://github.com/eshaffer321/monarchmoney-go/compare/v1.0.5...v1.1.0
 [1.0.5]: https://github.com/eshaffer321/monarchmoney-go/compare/v1.0.4...v1.0.5
 [1.0.4]: https://github.com/eshaffer321/monarchmoney-go/compare/v1.0.3...v1.0.4
 [1.0.3]: https://github.com/eshaffer321/monarchmoney-go/compare/v1.0.2...v1.0.3

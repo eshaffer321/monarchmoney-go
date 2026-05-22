@@ -25,7 +25,7 @@ import (
 const (
 	loginEndpoint    = "/auth/login/"
 	mfaEndpoint      = "/auth/login/mfa/"
-	defaultUserAgent = "monarchmoney-go/1.0.0"
+	defaultUserAgent = "monarchmoney-go/1.1.0"
 )
 
 // Service handles authentication operations
