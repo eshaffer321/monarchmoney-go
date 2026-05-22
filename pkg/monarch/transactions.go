@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"math"
 	"strings"
 	"time"
 
@@ -59,20 +60,36 @@ func (s *transactionService) Get(ctx context.Context, transactionID string) (*Tr
 	return result.GetTransaction, nil
 }
 
-// Create creates a new transaction
+// Create creates a new transaction.
+// CategoryID is required by the Monarch API — use Transactions.Categories.List()
+// to find a valid ID (e.g. the "Uncategorized" category).
 func (s *transactionService) Create(ctx context.Context, params *CreateTransactionParams) (*Transaction, error) {
+	if params.CategoryID == "" {
+		return nil, errors.New("CategoryID is required by the Monarch API")
+	}
+
 	query := s.client.loadQuery("transactions/create.graphql")
+
+	// Round amount to 2 decimal places as Monarch expects
+	roundedAmount := math.Round(params.Amount*100) / 100
 
 	input := map[string]interface{}{
 		"date":       params.Date.Format("2006-01-02"),
 		"accountId":  params.AccountID,
-		"amount":     params.Amount,
-		"merchant":   params.Merchant,
+		"amount":     roundedAmount,
 		"categoryId": params.CategoryID,
+	}
+
+	if params.Merchant != nil && params.Merchant.Name != "" {
+		input["merchantName"] = params.Merchant.Name
 	}
 
 	if params.Notes != "" {
 		input["notes"] = params.Notes
+	}
+
+	if params.ShouldUpdateBalance != nil {
+		input["shouldUpdateBalance"] = *params.ShouldUpdateBalance
 	}
 
 	variables := map[string]interface{}{
@@ -85,8 +102,12 @@ func (s *transactionService) Create(ctx context.Context, params *CreateTransacti
 				ID string `json:"id"`
 			} `json:"transaction"`
 			Errors []struct {
-				Message string `json:"message"`
-				Code    string `json:"code"`
+				Message     string `json:"message"`
+				Code        string `json:"code"`
+				FieldErrors []struct {
+					Field    string   `json:"field"`
+					Messages []string `json:"messages"`
+				} `json:"fieldErrors"`
 			} `json:"errors"`
 		} `json:"createTransaction"`
 	}
@@ -96,9 +117,21 @@ func (s *transactionService) Create(ctx context.Context, params *CreateTransacti
 	}
 
 	if len(result.CreateTransaction.Errors) > 0 {
+		e := result.CreateTransaction.Errors[0]
+		msg := e.Message
+		if len(e.FieldErrors) > 0 {
+			msg += " ("
+			for i, fe := range e.FieldErrors {
+				if i > 0 {
+					msg += "; "
+				}
+				msg += fe.Field + ": " + strings.Join(fe.Messages, ", ")
+			}
+			msg += ")"
+		}
 		return nil, &Error{
-			Code:    result.CreateTransaction.Errors[0].Code,
-			Message: result.CreateTransaction.Errors[0].Message,
+			Code:    e.Code,
+			Message: msg,
 		}
 	}
 
@@ -106,32 +139,10 @@ func (s *transactionService) Create(ctx context.Context, params *CreateTransacti
 		return nil, errors.New("no transaction returned from creation")
 	}
 
-	// Fetch the full transaction details
-	details, err := s.Get(ctx, result.CreateTransaction.Transaction.ID)
-	if err != nil {
-		return nil, err
-	}
-
-	// Convert details to transaction
 	return &Transaction{
-		ID:                 details.ID,
-		Date:               details.Date,
-		Amount:             details.Amount,
-		Pending:            details.Pending,
-		HideFromReports:    details.HideFromReports,
-		PlaidName:          details.PlaidName,
-		Merchant:           details.Merchant,
-		Notes:              details.Notes,
-		HasSplits:          details.HasSplits,
-		IsSplitTransaction: details.IsSplitTransaction,
-		IsRecurring:        details.IsRecurring,
-		NeedsReview:        details.NeedsReview,
-		ReviewedAt:         details.ReviewedAt,
-		CreatedAt:          details.CreatedAt,
-		UpdatedAt:          details.UpdatedAt,
-		Account:            details.Account,
-		Category:           details.Category,
-		Tags:               details.Tags,
+		ID:     result.CreateTransaction.Transaction.ID,
+		Date:   params.Date,
+		Amount: roundedAmount,
 	}, nil
 }
 
